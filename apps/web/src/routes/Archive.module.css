@@ -22,23 +22,46 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  max-height: 60vh;
-  overflow-y: auto;
 }
 
 .link {
-  display: block;
-  min-height: 44px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
   padding: var(--space-2) var(--space-3);
   background: var(--card);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   color: var(--paper);
   text-decoration: none;
   font-family: var(--font-mono);
 }
 
+/* Border, not outline: reserved as transparent above so hover recolours it
+   instead of adding it, which is what shifted every row on hover before. */
 .link:hover {
-  border: 1px solid var(--rock);
+  border-color: var(--rock);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.number {
+  font-weight: 600;
+}
+
+.date {
+  font-size: 0.78rem;
+  color: var(--mist);
+}
+
+.result {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
