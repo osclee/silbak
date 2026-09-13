@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { grade, isSolved, puzzleNumber } from "@silbak/engine";
 import type { ApeId, FeedbackSignal, Puzzle, Solution } from "@silbak/engine";
+import { arraysEqual } from "../lib/arrays";
 import { loadPuzzle } from "../lib/puzzle";
 import {
   capPlayed,
@@ -18,7 +19,7 @@ export interface HistoryEntry {
 
 export type GameStatus = "playing" | "won" | "lost";
 
-const MAX_GUESSES = 6;
+export const MAX_GUESSES = 6;
 
 interface GameState {
   dateKey: string;
@@ -95,6 +96,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   submit: () => {
     const { arrangement, history, status, dateKey, isArchive } = get();
     if (status !== "playing" || !currentSolution) return;
+    const lastEntry = history[history.length - 1];
+    if (lastEntry && arraysEqual(lastEntry.arrangement, arrangement)) return;
 
     const feedback = grade(arrangement, currentSolution);
     const nextHistory = [...history, { arrangement, feedback }];
