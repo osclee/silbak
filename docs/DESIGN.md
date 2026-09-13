@@ -4,7 +4,7 @@
 
 Status: draft v0.7 · Owner: Oz · Last updated: 2026-09-12
 
-> **v0.7 changelog:** a new `--card` token (`#2A7744`) gives the result card, field notes, and archive list a softer, lighter green than `--bark`, without touching `--bark` itself — the Rung still needs it mid-dark for the `--banana` glow-on-submit contrast (see §6, "Why the panel green didn't go all the way to pastel"). `--card` is a blend toward `--mist` chosen to keep >=3:1 contrast against `--banana` (the won-state headline) and >=4.5:1 against `--paper`/`--mist` (body text), so it reads lighter without repeating the pastel-panel mistake the v0.4 reversion already documented.
+> **v0.7 changelog:** a new `--card` token (`#2A7744`) gives every panel — result card, field notes, archive list, and the Rung itself — a softer, lighter green than `--bark`. `--card` is a blend toward `--mist` chosen to clear >=3:1 contrast against `--banana` (large text/UI components) and >=4.5:1 against `--paper`/`--mist` body text, so it reads lighter without repeating the pastel-panel mistake the v0.4 reversion already documented. Putting `--card` under the Rung meant the "correct rung" glyph (`.exact`, `--banana` on the panel) no longer clears 4.5:1 at its old regular weight/1.1rem size, so it went to 700/1.2rem to qualify as large text at the 3:1 threshold instead — see §6, "Why the panel green didn't go all the way to pastel". `--bark` itself is unchanged and still used where a panel isn't a "card" (attempt-history chips, `/dev/apes`).
 >
 > **v0.6 changelog:** the ape portraits were redrawn as a layered retro-vector cel in natural gorilla colors. They no longer borrow the page's green tokens by value; they own a five-token fur/skin/silver palette of their own, which retires the constraint that once pinned `--bark` to the portrait (see §6, "Why the panel green didn't go all the way to pastel"). Shading is flat shadow and highlight masses clipped inside each part, the silhouette is inked by a fattened underlay rather than per-part contours, and two trait tells were added (a shoulder hump for build, greying for elders). A dev-only `/dev/apes` route renders the whole valid trait matrix at 56px and 46px for eyeballing. See §6, Portraits.
 >
@@ -214,10 +214,10 @@ The world is still a primatology field station in montane cloud forest, not a zo
 ```
 --paper   #FBEFD3   page ground (warm banana-cream) + text/highlight on dark panels + the eye glint on portraits
 --forest  #1C2E19   ink — primary text, focus ring
---bark    #186B37   panels, rungs — the "make the green lighter" token
---card    #2A7744   softer/lighter panel green: result card, field notes, archive list (v0.7)
+--bark    #186B37   chips, dev-only panels — the "make the green lighter" token
+--card    #2A7744   panel green as of v0.7: the Rung, result card, field notes, archive list
 --rock    #E3C08A   wood-tone: portrait frame background, inert/disabled, hover borders
---mist    #C9E0BC   secondary text on dark bark panels (rank, traits, "wrong rung" feedback)
+--mist    #C9E0BC   secondary text on card panels (rank, traits, "wrong rung" feedback)
 --moss    #463A28   secondary text directly on the page ground (eyebrow, rules, nav links, notes)
 --banana  #FFC93C   the single hot accent: correct rung, share glyph
 --blood   #E14E2E   scar mark only (no longer "ranks lower" — feedback is non-directional as of v0.2)
@@ -248,7 +248,7 @@ The obvious reading of "lighter" is: make every green as light as the new cream 
 
 So the panel green got vivid, not pale — and although the portrait no longer needs it dark, `--banana` still does. "Lighter" landed on the page ground (which has no such constraint) and on making every green in the palette a *real* green instead of a near-black one, rather than on flattening the whole app to one brightness band.
 
-**v0.7** split the difference instead of relitigating it: panels that never carry a glowing `--banana` submit state — the result card, field notes, the archive list — get their own lighter `--card` token, while the Rung keeps `--bark`. `--card` is deliberately not a straight lighten of `--bark`; it's chosen to stay under the luminance ceiling `--banana` needs (still >=3:1 on the result card's won-state headline) while clearing 4.5:1 against `--paper`/`--mist` body text — lighter and softer, not pastel.
+**v0.7** revisits this rather than relitigating it: every panel, including the Rung, moved to a new `--card` token that's lighter than `--bark` but stops well short of pastel. `--card` is chosen to stay under the luminance ceiling `--banana` needs — still >=3:1 against it — while clearing 4.5:1 against `--paper`/`--mist` body text. The Rung's "correct rung" glyph is the tightest case (it's the exact signal the first bullet above is about), so at `--card`'s lightness it only clears that 3:1 floor as *large* text; the glyph moved from regular/1.1rem to 700/1.2rem to qualify. `--bark` itself didn't move — it's still used for panels that aren't "cards" (attempt-history chips, `/dev/apes`).
 
 ### Wood and red, brought forward
 
