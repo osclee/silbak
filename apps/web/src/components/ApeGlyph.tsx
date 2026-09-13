@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { Age, Build, Silver } from "@silbak/engine";
 
 interface ApeGlyphProps {
@@ -27,50 +28,62 @@ interface ApeGlyphProps {
  * The rest: the head overlaps the chest so no neck shows, the forelimb is long and
  * drops from directly under the jaw, and the hind foot is a flat plantigrade pad.
  *
- * The body, head and near limbs are all drawn in one value so the animal reads as a
- * single mass at 40px; separation comes from thin --forest contours, not from filling
- * parts in different colors. Two earlier passes failed here: a lighter torso fill
- * broke the silhouette into a shell sitting on tubes, and stroking the whole limb
- * outline — including the part buried in the chest — made the limbs read as boots.
- * So limb contours are clipped to the area *outside* the torso.
+ * Rendering is a retro-vector cel: one ink outline, one base fur value, then flat
+ * shadow and highlight masses clipped inside each part, lit from the upper left.
+ *
+ *   1. Every part (torso + hump, near limbs, head) is drawn once as an *underlay* —
+ *      filled AND stroked in --fur-deep — and then again on top filled in --fur with
+ *      no stroke. The union of the underlays is the silhouette's ink outline; the
+ *      union of the fills covers every interior seam. Where a limb is buried in the
+ *      chest its stroke is simply painted over, so no contour is ever drawn there
+ *      (stroking a buried limb edge makes the limbs read as boots — learned the hard
+ *      way, DESIGN.md §6).
+ *   2. Shading is clipped to the part it belongs to, in that part's own coordinate
+ *      space, so it rides along with the build/age transforms for free.
+ *   3. --silver is luminance-matched to the --rock frame the portrait sits in. The
+ *      saddle is therefore clipped to the torso and an inner rim of --fur-deep is
+ *      re-stroked along the back after it, so silver never touches the frame.
  *
  * Geometry lives in one 100x100 viewBox. Traits are applied as transforms and swaps
  * over a fixed base pose rather than by rebuilding paths, so the silhouette stays
  * consistent across the whole trait matrix.
  */
 
-/** Bulk of the torso and limbs. */
-const BUILD_SCALE: Record<Build, { sx: number; sy: number; limb: number }> = {
-  slight: { sx: 0.95, sy: 0.86, limb: 0.87 },
-  solid: { sx: 1, sy: 1, limb: 1 },
-  heavy: { sx: 1.06, sy: 1.15, limb: 1.14 },
+/** Bulk of the torso and limbs, plus how far the shoulder hump rises off the withers. */
+const BUILD_SCALE: Record<Build, { sx: number; sy: number; limb: number; hump: number }> = {
+  slight: { sx: 0.93, sy: 0.86, limb: 0.85, hump: 0.7 },
+  solid: { sx: 1, sy: 1, limb: 1, hump: 1 },
+  heavy: { sx: 1.08, sy: 1.12, limb: 1.18, hump: 1.4 },
 };
-
-/** Sagittal crest height and half-width — the clearest age tell in profile. */
-const CREST: Record<Age, { height: number; halfWidth: number }> = {
-  juvenile: { height: 0, halfWidth: 14 },
-  subadult: { height: 1.5, halfWidth: 14 },
-  prime: { height: 3, halfWidth: 15 },
-  elder: { height: 5, halfWidth: 16 },
-};
-
-/** Muzzle length, applied as a horizontal scale about the neck joint. */
-const FACE_LENGTH: Record<Age, number> = { juvenile: 0.85, subadult: 0.93, prime: 1, elder: 1.06 };
-
-/** Juveniles carry a proportionally larger cranium on a smaller frame. */
-const HEAD_SCALE: Record<Age, number> = { juvenile: 0.74, subadult: 0.77, prime: 0.8, elder: 0.83 };
 
 /**
- * The silver saddle, as a gradient mantle over the back rather than a filled band:
- * `solid` is where the silver is still at full strength and `fade` where it has gone,
- * both as fractions along an axis running down from the withers. A hard-edged band
- * reads as a waterline across the body; the whole point is that it look like fur.
+ * Age: whole-animal scale, head size relative to that, sagittal crest height, muzzle
+ * length, eye size, and whether the brow and crest have greyed. Juveniles are a
+ * smaller animal carrying a proportionally larger head with big eyes and no crest;
+ * elders carry the tallest crest and go grey around the face.
  */
-const SADDLE: Record<Silver, { solid: number; fade: number; opacity: number; light: boolean } | null> = {
+const AGE: Record<
+  Age,
+  { body: number; head: number; crest: number; muzzle: number; eye: number; greying: boolean }
+> = {
+  juvenile: { body: 0.9, head: 0.88, crest: 0, muzzle: 0.82, eye: 2.6, greying: false },
+  subadult: { body: 0.96, head: 0.8, crest: 2, muzzle: 0.92, eye: 2.3, greying: false },
+  prime: { body: 1, head: 0.8, crest: 4, muzzle: 1, eye: 2.1, greying: false },
+  elder: { body: 1, head: 0.83, crest: 6.5, muzzle: 1.1, eye: 2.1, greying: true },
+};
+
+/**
+ * The silver saddle, as a patch that grows *in area* along the withers→rump axis
+ * rather than only in opacity: `extent` is how far back and down it reaches, `patch`
+ * its opacity, `flecks` how many silver hairs are scattered around it, and `thigh`
+ * whether it continues onto the near hind leg (real silverbacks carry it onto the
+ * hips). Four levels have to stay distinguishable at 46px.
+ */
+const SADDLE: Record<Silver, { extent: number; patch: number; flecks: number; thigh: boolean } | null> = {
   none: null,
-  flecked: { solid: 0.0, fade: 0.3, opacity: 0.26, light: false },
-  "part-silver": { solid: 0.12, fade: 0.55, opacity: 0.44, light: false },
-  full: { solid: 0.15, fade: 0.62, opacity: 0.55, light: true },
+  flecked: { extent: 0.28, patch: 0.3, flecks: 26, thigh: false },
+  "part-silver": { extent: 0.55, patch: 0.88, flecks: 10, thigh: false },
+  full: { extent: 0.92, patch: 1, flecks: 8, thigh: true },
 };
 
 /** Chest, shoulder hump, the long shallow decline of the back, rump, belly. */
@@ -100,6 +113,26 @@ const FAR_HINDLIMB =
 const CRANIUM = "M40 30 C41 21 34 14 24 15 C15 16 10 22 10 31 C10 38 15 43 24 44 C33 45 40 39 40 30 Z";
 const MUZZLE = "M20 33 C12 34 5 39 6 44 C7 49 13 51 19 50 C26 49 28 43 27 37 Z";
 
+/** The bare-skinned face: brow shelf, eye socket, cheek and the whole muzzle. Drawn
+ *  in head space and clipped to the head so it can be generous at the edges. */
+const FACE = "M8 31 C13 28.5 20 28.5 25 31.5 C26.5 36 25 41 23 46 C21 50.5 14 52 9 50 C5 48 3.5 42 5 36 Z";
+
+/** Shoulder hump: an ellipse riding on the withers, part of the torso silhouette.
+ *  Its vertical radius is the build tell. */
+const HUMP = { cx: 52, cy: 30, rx: 13, ry: 6 };
+
+/** The hump ellipse as path data, for even-odd compound clips. */
+function humpPath(ry: number): string {
+  const { cx, cy, rx } = HUMP;
+  return `M${cx - rx} ${cy} a${rx} ${ry} 0 1 0 ${2 * rx} 0 a${rx} ${ry} 0 1 0 ${-2 * rx} 0 Z`;
+}
+
+/** A big square with a hole cut out, for "everything except this shape" clips. */
+const EVERYTHING = "M-50 -50 H150 V150 H-50 Z";
+
+/** Ink weight of the silhouette outline, in viewBox units (≈1.1px at 56px). */
+const INK = 4;
+
 /** Cheap deterministic hash (display-only fur texture, not gameplay RNG). */
 function speckleNoise(seed: number, i: number): number {
   let h = seed ^ Math.imul(i + 0x9e3779b9, 0x85ebca6b);
@@ -115,9 +148,10 @@ function speckleNoise(seed: number, i: number): number {
  * only reaches three quarters of the way there, and setting `top` directly made every
  * age look crestless.
  */
-function crestPath(height: number, halfWidth: number): string {
+function crestPath(height: number): string {
   if (height <= 0) return "";
   const cx = 26;
+  const halfWidth = 14 + height * 0.35;
   const left = cx - halfWidth;
   const right = cx + halfWidth;
   const base = 28;
@@ -126,133 +160,363 @@ function crestPath(height: number, halfWidth: number): string {
   return `M${left} ${base} C${left} ${top} ${right} ${top} ${right} ${base} Z`;
 }
 
+/**
+ * A polyline redrawn as a run of small outward-bulging quadratic arcs, so the
+ * saddle's edge reads as tufts of fur rather than a waterline across the body.
+ * "Outward" is the right-hand side of the direction of travel (screen coordinates).
+ */
+function scalloped(points: Array<[number, number]>, step: number, amp: number): string {
+  let d = "";
+  for (let s = 0; s < points.length - 1; s++) {
+    const [x0, y0] = points[s];
+    const [x1, y1] = points[s + 1];
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    const n = Math.max(1, Math.round(len / step));
+    const nx = -(y1 - y0) / len;
+    const ny = (x1 - x0) / len;
+    for (let i = 0; i < n; i++) {
+      const ax = x0 + ((x1 - x0) * (i + 0.5)) / n + nx * amp;
+      const ay = y0 + ((y1 - y0) * (i + 0.5)) / n + ny * amp;
+      const bx = x0 + ((x1 - x0) * (i + 1)) / n;
+      const by = y0 + ((y1 - y0) * (i + 1)) / n;
+      d += `Q${ax.toFixed(1)} ${ay.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)} `;
+    }
+  }
+  return d;
+}
+
+/**
+ * The saddle region in torso space: everything above and in front of a scalloped
+ * boundary that starts at the shoulders, runs back along the flank, and turns up to
+ * the back line. `extent` 0..1 moves the boundary from just behind the withers to the
+ * rump and hips. The region overshoots the torso deliberately; it is clipped.
+ */
+function saddlePath(extent: number): string {
+  const xFront = 38 + extent * 10;
+  const xEnd = 46 + extent * 46;
+  const yBottom = 25 + extent * 40;
+  const r = 6;
+  const boundary = scalloped(
+    [
+      [34, 6],
+      [xFront, yBottom],
+      [xEnd - r, yBottom],
+      [xEnd, yBottom - r],
+      [xEnd, 4],
+    ],
+    5,
+    1.7,
+  );
+  return `M34 6 ${boundary}Z`;
+}
+
+/** The saddle's continuation onto the near thigh, in hind-limb space. */
+const THIGH_SADDLE = `M48 40 L82 40 L82 55 ${scalloped(
+  [
+    [82, 55],
+    [48, 58],
+  ],
+  5,
+  1.7,
+)}Z`;
+
 export function ApeGlyph({ id, age, build, silver, scar, size = 56 }: ApeGlyphProps) {
-  const { sx, sy, limb } = BUILD_SCALE[build];
-  const crest = CREST[age];
+  const { sx, sy, limb, hump } = BUILD_SCALE[build];
+  const a = AGE[age];
   const saddle = SADDLE[silver];
 
-  const uid = `ape-${id}-${age}-${build}-${silver}`;
+  // useId keeps clipPath ids unique across every glyph on the page (a rung ladder
+  // renders six; the dev matrix renders the same ape id dozens of times).
+  const uid = useId().replace(/:/g, "");
   const torsoClip = `${uid}-torso`;
-  const outsideClip = `${uid}-outside`;
   const headClip = `${uid}-head`;
-  const saddleFill = `${uid}-saddle`;
+  const foreClip = `${uid}-fore`;
+  const hindClip = `${uid}-hind`;
+  const rimClip = `${uid}-rim`;
+  const noHumpClip = `${uid}-nohump`;
+  const noTorsoClip = `${uid}-notorso`;
+  const silverFill = `${uid}-silver`;
 
-  const bark = "var(--bark)";
-  const forest = "var(--forest)";
-  const mist = "var(--mist)";
+  const furDeep = "var(--fur-deep)";
+  const fur = "var(--fur)";
+  const furLight = "var(--fur-light)";
+  const skin = "var(--skin)";
+  const silverInk = "var(--silver)";
   const paper = "var(--paper)";
   const blood = "var(--blood)";
 
+  // Age scales the whole animal about its footprint, so juveniles stand shorter.
+  const bodyTransform = `translate(50 88) scale(${a.body}) translate(-50 -88)`;
   // Build scales the torso about the belly line, so bulk grows upward into the
   // shoulder hump rather than sinking the animal through the ground.
   const torsoTransform = `translate(58 72) scale(${sx} ${sy}) translate(-58 -72)`;
   // Age scales the face about the neck joint, so only the muzzle lengthens. The joint
   // is pinned inside the chest, which is what keeps the neck from showing.
-  const hs = HEAD_SCALE[age];
-  const headTransform = `translate(40 30) scale(${FACE_LENGTH[age] * hs} ${hs}) translate(-40 -30)`;
+  const headTransform = `translate(40 30) scale(${a.muzzle * a.head} ${a.head}) translate(-40 -30)`;
   // Limb thickness scales about each limb's own long axis, feet staying on the ground.
   const limbTransform = (cx: number) =>
     `translate(${cx} 88) scale(${limb} ${1 + (limb - 1) * 0.3}) translate(-${cx} -88)`;
 
-  const crestD = crestPath(crest.height, crest.halfWidth);
+  const crestD = crestPath(a.crest);
+  const humpRy = HUMP.ry * hump;
 
-  // Fur texture: a few flecks over the back so same-trait apes still read as
-  // individuals. Clipped to the torso, so they never escape the silhouette.
-  const fleckCount = silver === "flecked" ? 30 : 14;
-  const speckles: Array<[number, number, number]> = [];
-  for (let i = 0; i < fleckCount; i++) {
-    const x = 38 + speckleNoise(id + 17, i * 3) * 48;
-    const y = 32 + speckleNoise(id + 43, i * 3 + 1) * 34;
-    const r = 0.5 + speckleNoise(id + 71, i * 3 + 2) * 0.8;
-    speckles.push([x, y, r]);
+  // Fur texture. With no silver: a few darker-on-dark hairs so same-trait apes still
+  // read as individuals. With silver: light hairs scattered around the patch edge so
+  // the saddle looks like it is growing in, not painted on.
+  const flecks: Array<[number, number, number]> = [];
+  if (saddle) {
+    const xFront = 38 + saddle.extent * 10;
+    const xEnd = 46 + saddle.extent * 46;
+    const yBottom = 25 + saddle.extent * 40;
+    for (let i = 0; i < saddle.flecks; i++) {
+      const t = speckleNoise(id + 17, i * 3);
+      const x = xFront - 2 + t * (xEnd + 4 - xFront);
+      const y = yBottom - 10 + speckleNoise(id + 43, i * 3 + 1) * 15;
+      const r = 0.6 + speckleNoise(id + 71, i * 3 + 2) * 0.7;
+      flecks.push([x, y, r]);
+    }
+  } else {
+    for (let i = 0; i < 8; i++) {
+      const x = 42 + speckleNoise(id + 17, i * 3) * 44;
+      const y = 30 + speckleNoise(id + 43, i * 3 + 1) * 30;
+      const r = 0.6 + speckleNoise(id + 71, i * 3 + 2) * 0.7;
+      flecks.push([x, y, r]);
+    }
   }
 
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-      <defs>
-        <clipPath id={torsoClip}>
-          <path d={TORSO} transform={torsoTransform} />
-        </clipPath>
-        {/* Everything except the torso, via an even-odd compound path. Limb contours
-            are clipped to this so no outline is drawn where a limb is buried. */}
-        <clipPath id={outsideClip}>
-          <path d={`M-200 -200H300V300H-200Z ${TORSO}`} clipRule="evenodd" transform={torsoTransform} />
-        </clipPath>
-        <clipPath id={headClip}>
-          <g transform={headTransform}>
-            <path d={CRANIUM} />
-            <path d={MUZZLE} />
-            {crestD ? <path d={crestD} /> : null}
-          </g>
-        </clipPath>
-        {saddle ? (
-          // Axis runs down and slightly forward from the withers, i.e. across the
-          // back rather than straight down the page.
-          <linearGradient id={saddleFill} gradientUnits="userSpaceOnUse" x1={58} y1={29} x2={46} y2={72}>
-            <stop offset={0} stopColor={saddle.light ? paper : mist} stopOpacity={saddle.opacity} />
-            <stop offset={saddle.solid} stopColor={saddle.light ? paper : mist} stopOpacity={saddle.opacity} />
-            <stop offset={saddle.fade} stopColor={saddle.light ? paper : mist} stopOpacity={0} />
-          </linearGradient>
-        ) : null}
-      </defs>
-
-      {/* Far-side limbs sit behind the body in the darkest value so they recede. */}
-      <g fill={forest}>
-        <path d={FAR_FORELIMB} transform={limbTransform(42)} />
-        <path d={FAR_HINDLIMB} transform={limbTransform(76)} />
+  // Every part of the near silhouette, drawn identically for the ink underlay and
+  // for the base fill. Order within the group does not matter for either pass.
+  const silhouette = (
+    <>
+      <g transform={torsoTransform}>
+        <path d={TORSO} />
+        <ellipse cx={HUMP.cx} cy={HUMP.cy} rx={HUMP.rx} ry={humpRy} />
       </g>
-
-      {/* Torso */}
-      <path d={TORSO} transform={torsoTransform} fill={bark} />
-
-      {/* Near limbs are filled before the saddle so the mantle washes over the part of
-          each limb that is buried in the chest. Filling them afterwards leaves the
-          limb's straight buried edge showing as a rectangle across the silver. */}
-      <g fill={bark}>
-        <path d={HINDLIMB} transform={limbTransform(64)} />
-        <path d={FORELIMB} transform={limbTransform(36)} />
-      </g>
-
-      {/* Silver mantle over the back, plus fur flecks. */}
-      <g clipPath={`url(#${torsoClip})`}>
-        {saddle ? <rect x={0} y={0} width={100} height={100} fill={`url(#${saddleFill})`} /> : null}
-        {speckles.map(([x, y, r], i) => (
-          <circle key={i} cx={x} cy={y} r={r} fill={paper} opacity={silver === "flecked" ? 0.26 : 0.1} />
-        ))}
-      </g>
-
-      {/* Limb contours, only where a limb actually emerges from the body. */}
-      <g fill="none" stroke={forest} strokeWidth={1.8} strokeLinejoin="round" clipPath={`url(#${outsideClip})`}>
-        <path d={HINDLIMB} transform={limbTransform(64)} />
-        <path d={FORELIMB} transform={limbTransform(36)} />
-      </g>
-
-      {/* Head */}
-      <g transform={headTransform} fill={bark}>
+      <path d={HINDLIMB} transform={limbTransform(64)} />
+      <path d={FORELIMB} transform={limbTransform(36)} />
+      <g transform={headTransform}>
         {crestD ? <path d={crestD} /> : null}
         <path d={CRANIUM} />
         <path d={MUZZLE} />
       </g>
+    </>
+  );
 
-      {/* Crown cap: the emoji's darker skull patch, stopping above the brow. */}
-      <g clipPath={`url(#${headClip})`}>
-        <ellipse cx={27} cy={10} rx={20} ry={18} fill={forest} opacity={0.8} />
-      </g>
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+      <defs>
+        {/* Part clips are defined in each part's own space and referenced from inside
+            that part's transformed group, so they follow the trait transforms. */}
+        <clipPath id={torsoClip}>
+          <path d={TORSO} />
+          <ellipse cx={HUMP.cx} cy={HUMP.cy} rx={HUMP.rx} ry={humpRy} />
+        </clipPath>
+        <clipPath id={rimClip}>
+          <rect x={0} y={0} width={100} height={58} />
+        </clipPath>
+        {/* The inner rim must trace the *union* of torso and hump, never the part of
+            either edge buried inside the other — a stroked ellipse inside the back
+            reads as a ring painted on the fur. */}
+        <clipPath id={noHumpClip}>
+          <path d={`${EVERYTHING} ${humpPath(humpRy)}`} clipRule="evenodd" />
+        </clipPath>
+        <clipPath id={noTorsoClip}>
+          <path d={`${EVERYTHING} ${TORSO}`} clipRule="evenodd" />
+        </clipPath>
+        <clipPath id={foreClip}>
+          <path d={FORELIMB} />
+        </clipPath>
+        <clipPath id={hindClip}>
+          <path d={HINDLIMB} />
+        </clipPath>
+        <clipPath id={headClip}>
+          {crestD ? <path d={crestD} /> : null}
+          <path d={CRANIUM} />
+          <path d={MUZZLE} />
+        </clipPath>
+        <linearGradient id={silverFill} gradientUnits="userSpaceOnUse" x1={0} y1={18} x2={0} y2={66}>
+          <stop offset={0} stopColor={silverInk} stopOpacity={1} />
+          <stop offset={1} stopColor={silverInk} stopOpacity={0.72} />
+        </linearGradient>
+      </defs>
 
-      {/* Face: brow shelf, deep-set eye, broad nose, mouth line, small ear. */}
-      <g transform={headTransform}>
-        <path d="M9 34 C13 30 20 29 26 31" stroke={forest} strokeWidth={2.6} fill="none" strokeLinecap="round" />
-        <circle cx={14.5} cy={36.5} r={1.5} fill={paper} />
-        <path d="M6.5 42.5 C8.5 41.5 10.5 41.5 12 42.5" stroke={forest} strokeWidth={1.6} fill="none" strokeLinecap="round" />
-        <path d="M7 47 C11 49.5 16 50 20 49" stroke={forest} strokeWidth={1.5} fill="none" strokeLinecap="round" />
-        <path d="M35 29 A3.2 3.2 0 1 1 35 35.5" stroke={forest} strokeWidth={1.6} fill="none" />
+      <g transform={bodyTransform}>
+        {/* Far-side limbs: outlined like everything else, then washed darker so they
+            recede behind the body. */}
+        <g fill={fur} stroke={furDeep} strokeWidth={INK} strokeLinejoin="round">
+          <path d={FAR_FORELIMB} transform={limbTransform(42)} />
+          <path d={FAR_HINDLIMB} transform={limbTransform(76)} />
+        </g>
+        <g fill={furDeep} opacity={0.5}>
+          <path d={FAR_FORELIMB} transform={limbTransform(42)} />
+          <path d={FAR_HINDLIMB} transform={limbTransform(76)} />
+        </g>
 
-        {/* Scar: one diagonal stroke across the crown, brow and cheek. Drawn in head
-            space so it scales with the skull, and routed wide of the eye at (14.5,36.5)
-            — it must never paint over it. */}
-        {scar ? (
-          <path d="M27 21 L18 39" stroke={blood} strokeWidth={2.3} strokeLinecap="round" fill="none" />
-        ) : null}
+        {/* Ink underlay: the silhouette's outline, as one union. */}
+        <g fill={furDeep} stroke={furDeep} strokeWidth={INK} strokeLinejoin="round">
+          {silhouette}
+        </g>
+        {/* Base fill over it, covering every interior seam. */}
+        <g fill={fur}>{silhouette}</g>
+
+        {/* Torso: belly shadow, jaw shadow, hump and back highlights, then the saddle,
+            fur flecks, and the inner rim that keeps silver off the frame. */}
+        <g transform={torsoTransform}>
+          <g clipPath={`url(#${torsoClip})`}>
+            <path d="M20 54 C34 63 62 66 94 55 L94 80 L20 80 Z" fill={furDeep} opacity={0.45} />
+            <ellipse cx={37} cy={46} rx={12} ry={7} fill={furDeep} opacity={0.35} />
+            <ellipse cx={48} cy={26.5} rx={9} ry={3.6 + humpRy * 0.25} fill={furLight} opacity={0.8} />
+            <path
+              d="M56 28.5 C66 30 76 35 83 41"
+              stroke={furLight}
+              strokeWidth={3}
+              strokeLinecap="round"
+              fill="none"
+              opacity={0.5}
+            />
+            <ellipse cx={84} cy={47} rx={5} ry={6} fill={furLight} opacity={0.45} />
+            {saddle ? (
+              <path d={saddlePath(saddle.extent)} fill={`url(#${silverFill})`} opacity={saddle.patch} />
+            ) : null}
+            {flecks.map(([x, y, r], i) => (
+              <circle
+                key={i}
+                cx={x}
+                cy={y}
+                r={r}
+                fill={saddle ? silverInk : furLight}
+                opacity={saddle ? 0.8 : 0.5}
+              />
+            ))}
+            <g clipPath={`url(#${rimClip})`} fill="none" stroke={furDeep} strokeWidth={3}>
+              <path d={TORSO} clipPath={`url(#${noHumpClip})`} />
+              <path d={humpPath(humpRy)} clipPath={`url(#${noTorsoClip})`} />
+            </g>
+          </g>
+        </g>
+
+        {/* Near hind limb: lit shin, shadowed hamstring, dark-skinned sole. */}
+        <g transform={limbTransform(64)}>
+          <g clipPath={`url(#${hindClip})`}>
+            <path
+              d="M56.5 58 C55.6 64 55.3 71 56 77 L61.5 77 C60.8 71 61 64 62 58 C61 55.5 57.5 55.5 56.5 58 Z"
+              fill={furLight}
+              opacity={0.55}
+            />
+            <path d="M72 46 L80 46 L80 90 L70 90 C75 74 77 62 72 46 Z" fill={furDeep} opacity={0.4} />
+            {saddle?.thigh ? <path d={THIGH_SADDLE} fill={`url(#${silverFill})`} opacity={0.9} /> : null}
+            <ellipse cx={65} cy={85.5} rx={10} ry={2.6} fill={skin} />
+          </g>
+        </g>
+
+        {/* Near forelimb: lit forearm, shadowed inner edge, knuckle pad. */}
+        <g transform={limbTransform(36)}>
+          <g clipPath={`url(#${foreClip})`}>
+            <path
+              d="M25 54 C24.3 62 24.2 71 25 79 L30.5 79 C29.8 71 29.8 62 30.5 54 C29.5 51.5 26 51.5 25 54 Z"
+              fill={furLight}
+              opacity={0.55}
+            />
+            <path d="M40 40 L50 40 L50 90 L40 90 C44 74 44 58 40 40 Z" fill={furDeep} opacity={0.4} />
+            <ellipse cx={35} cy={85} rx={9} ry={2.8} fill={skin} />
+            <path d="M30 83.5 L30 86 M35 83 L35 86" stroke={furDeep} strokeWidth={1} opacity={0.6} />
+          </g>
+        </g>
+
+        {/* Head: crown highlight, shadow where it meets the chest, then the bare face,
+            ear, and features. Drawn last so it sits in front of the shoulder. */}
+        <g transform={headTransform}>
+          <g clipPath={`url(#${headClip})`}>
+            <ellipse cx={24} cy={19 - a.crest * 0.6} rx={10} ry={5} fill={furLight} opacity={0.7} />
+            <ellipse cx={39} cy={37} rx={8} ry={8} fill={furDeep} opacity={0.35} />
+            <path d={FACE} fill={skin} />
+            {a.greying ? (
+              <>
+                <ellipse cx={32} cy={26} rx={4.5} ry={3} fill={silverInk} opacity={0.45} />
+                <ellipse cx={26} cy={14 - a.crest + 2.5} rx={6} ry={2.5} fill={silverInk} opacity={0.5} />
+              </>
+            ) : null}
+          </g>
+          {/* Ear */}
+          <circle cx={36.5} cy={31.5} r={3.2} fill={skin} stroke={furDeep} strokeWidth={1.2} />
+          <circle cx={36.5} cy={31.5} r={1.3} fill={furDeep} opacity={0.6} />
+          {/* Brow ridge, heavy. */}
+          <path
+            d="M8 33 C13 29.5 20 29.5 25.5 32"
+            stroke={furDeep}
+            strokeWidth={3}
+            fill="none"
+            strokeLinecap="round"
+          />
+          {a.greying ? (
+            <path
+              d="M9 32 C14 29 20 29 25 31.5"
+              stroke={silverInk}
+              strokeWidth={1.4}
+              fill="none"
+              strokeLinecap="round"
+              opacity={0.6}
+            />
+          ) : null}
+          {/* Eye: deep-set, dark, with one glint. */}
+          <ellipse cx={14.5} cy={37} rx={a.eye * 1.1} ry={a.eye} fill={furDeep} />
+          <circle
+            cx={14.5 - a.eye * 0.35}
+            cy={37 - a.eye * 0.35}
+            r={a.eye * 0.38}
+            fill={paper}
+            opacity={0.9}
+          />
+          {/* Nostril, mouth, cheek crease. */}
+          <path
+            d="M6.5 42.5 C8.5 41.3 10.5 41.3 12 42.5"
+            stroke={furDeep}
+            strokeWidth={1.7}
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M7 47.5 C11 49.8 16 49.8 20 48.2"
+            stroke={furDeep}
+            strokeWidth={1.6}
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M22.5 39 C23.5 43 23 46 21.5 48.5"
+            stroke={furDeep}
+            strokeWidth={1}
+            fill="none"
+            strokeLinecap="round"
+            opacity={0.55}
+          />
+
+          {/* Scar: one short diagonal cut down the bare cheek, under the brow and
+              behind the eye. It lives on the --skin mask on purpose — a red stroke
+              over near-black fur reads as a painted bar, over grey skin it reads as
+              a healed wound. A faint dark edge gives it depth. Drawn in head space so
+              it scales with the skull, and kept clear of the eye at (14.5,37). */}
+          {scar ? (
+            <>
+              <path
+                d="M23.5 38 L19 47.5"
+                stroke={furDeep}
+                strokeWidth={3.4}
+                strokeLinecap="round"
+                fill="none"
+                opacity={0.45}
+              />
+              <path
+                d="M23.5 38 L19 47.5"
+                stroke={blood}
+                strokeWidth={2.1}
+                strokeLinecap="round"
+                fill="none"
+                opacity={0.92}
+              />
+            </>
+          ) : null}
+        </g>
       </g>
     </svg>
   );

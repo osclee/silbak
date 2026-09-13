@@ -2,8 +2,10 @@
 
 > A daily deduction game. Rank six apes in a gorilla troop from silverback to omega in six guesses.
 
-Status: draft v0.5 · Owner: Oz · Last updated: 2026-08-17
+Status: draft v0.6 · Owner: Oz · Last updated: 2026-09-12
 
+> **v0.6 changelog:** the ape portraits were redrawn as a layered retro-vector cel in natural gorilla colors. They no longer borrow the page's green tokens by value; they own a five-token fur/skin/silver palette of their own, which retires the constraint that once pinned `--bark` to the portrait (see §6, "Why the panel green didn't go all the way to pastel"). Shading is flat shadow and highlight masses clipped inside each part, the silhouette is inked by a fattened underlay rather than per-part contours, and two trait tells were added (a shoulder hump for build, greying for elders). A dev-only `/dev/apes` route renders the whole valid trait matrix at 56px and 46px for eyeballing. See §6, Portraits.
+>
 > **v0.5 changelog:** the canopy backdrop was rebuilt from a tiled SVG `<pattern>` into a stack of height-agnostic layers (full-height trunks, edge-anchored canopy/understory bands, percentage-placed boughs and motes). Three measured defects forced it: nothing inside `<defs>` ever animated, so the documented canopy sway had never once rendered; the tile's `ResizeObserver` height never landed, seaming the page mid-scroll; and a single repeated tile cannot produce a forest. The palette is untouched — depth now comes from `color-mix()` blends of existing tokens. See §6 for the architecture and the traps.
 >
 > **v0.4 changelog:** visual system flipped from a dark, muted "field station at night" palette to a bright, saturated "jungle in daylight" one — lighter and more playful, closer to Donkey Kong Country's box art than a research log. Page ground moved from near-black to a warm banana-cream; the primary green went from almost-black to a real, vivid jungle green; wood-tone and red accents were leaned into harder. See §6 for the new token table and the reasoning behind which roles could and couldn't just get lighter.
@@ -208,15 +210,23 @@ The world is still a primatology field station in montane cloud forest, not a zo
 ### Tokens
 
 ```
---paper   #FBEFD3   page ground (warm banana-cream) + text/highlight on dark panels
---forest  #1C2E19   ink — primary text, glyph shadow/contour, crown darkening
---bark    #186B37   panels, rungs, glyph body fill — the "make the green lighter" token
+--paper   #FBEFD3   page ground (warm banana-cream) + text/highlight on dark panels + the eye glint on portraits
+--forest  #1C2E19   ink — primary text, focus ring
+--bark    #186B37   panels, rungs — the "make the green lighter" token
 --rock    #E3C08A   wood-tone: portrait frame background, inert/disabled, hover borders
 --mist    #C9E0BC   secondary text on dark bark panels (rank, traits, "wrong rung" feedback)
 --moss    #463A28   secondary text directly on the page ground (eyebrow, rules, nav links, notes)
 --banana  #FFC93C   the single hot accent: correct rung, share glyph
 --blood   #E14E2E   scar mark only (no longer "ranks lower" — feedback is non-directional as of v0.2)
+
+--fur-deep  #1A1614   portrait ink: silhouette outline, far limbs, shadow masses, brow/eye/nostril/mouth
+--fur       #2E2622   portrait base fill: torso, near limbs, head
+--fur-light #5A4D44   portrait lit fur: hump top, crown, forearm and shin bands
+--skin      #5C5654   portrait bare skin: face, ear, knuckle pad, sole
+--silver    #C2BEB6   portrait silver: saddle, flecks, elder greying
 ```
+
+The five `--fur*`/`--skin`/`--silver` tokens are the portrait's and nothing else's (v0.6). They exist so the gorilla can be a gorilla-colored gorilla without the page's greens having to bend around it. One caveat is load-bearing: `--silver` is luminance-matched to `--rock`, the disc the portrait sits on (~1:1). Silver must therefore never reach the silhouette edge unbounded — the portrait keeps a `--fur-deep` outline between any silver and the frame (see Portraits).
 
 `--sky` (`#7FA8C9`, formerly "ranks higher") was removed in v0.2 — it has no remaining use now that feedback is binary.
 
@@ -231,9 +241,9 @@ The world is still a primatology field station in montane cloud forest, not a zo
 The obvious reading of "lighter" is: make every green as light as the new cream page ground. That was tried and reverted, for two reasons that both trace back to `--banana` and the ape portraits:
 
 - `--banana` (`#FFC93C`) is a light, warm yellow. Against a light or pastel panel it nearly disappears — the "correct rung" signal is the one piece of color that must never wash out. Against the current `--bark` (`#186B37`, deliberately kept mid-dark) it holds ~4.3:1, which is what makes a rung glow gold on submit instead of just faintly tinting.
-- The ape portraits (§6, Portraits) are built from exactly three of these tokens by *value*, not by name: `--forest` has to be the darkest thing on the glyph (contours, far-limb shadow, crown patch), `--bark` the mid-value body fill, and `--paper` the lightest (eye dot, fur speckles, the full-silver mantle glow). If `--bark` drifts up too close to `--paper`, the eye dot and silvering — the whole point of the silvering trait — stop popping off the body. `--bark` at `#186B37` keeps that three-step ladder intact while still reading as a real, saturated jungle green rather than the old near-black (`#16251D` → `#186B37` is roughly a 14x jump in relative luminance — very much "lighter," just not pastel).
+- *(Retired in v0.6, kept as a documented reversal.)* Through v0.5 the ape portraits were built from exactly three of these tokens by *value*, not by name: `--forest` the darkest thing on the glyph, `--bark` the mid-value body fill, `--paper` the lightest (eye dot, fur speckles, full-silver mantle). That pinned `--bark` from above — if it drifted toward `--paper`, the eye and the silvering stopped popping off the body — and it is why the panel green was kept at `#186B37` rather than lighter (`#16251D` → `#186B37` is roughly a 14x jump in relative luminance — very much "lighter," just not pastel). As of v0.6 the portrait owns its own palette (`--fur-deep`/`--fur`/`--fur-light`/`--skin`/`--silver`, above) and places no constraint on the page greens at all. The `--banana` contrast reason in the previous bullet is the only one that still holds, and it is sufficient on its own.
 
-So the panel green got vivid, not pale. "Lighter" landed on the page ground (which has no such constraint) and on making every green in the palette a *real* green instead of a near-black one, rather than on flattening the whole app to one brightness band.
+So the panel green got vivid, not pale — and although the portrait no longer needs it dark, `--banana` still does. "Lighter" landed on the page ground (which has no such constraint) and on making every green in the palette a *real* green instead of a near-black one, rather than on flattening the whole app to one brightness band.
 
 ### Wood and red, brought forward
 
@@ -253,19 +263,31 @@ Everything that is *data* is mono. Everything that is *voice* is sans. That spli
 
 ### Portraits
 
-Ape portraits are **generated from traits**, never picked from a library:
+Ape portraits are **generated from traits**, never picked from a library. As of v0.6 they are a layered retro-vector cel in natural gorilla colors — charcoal fur, grey skin, grey-white silver — drawn by `ApeGlyph.tsx` and nowhere else.
 
-- Build scales the torso and limbs (0.86 / 1.0 / 1.15 in depth)
-- Silvering is a mantle over the back, as a gradient that fades into the body (0 → 0.55)
-- Age drives sagittal crest height and muzzle length
-- Scar draws a single diagonal stroke across the crown and cheek
-
-The pose is the knuckle-walking quadruped profile of the **gorilla emoji** (U+1F98D), and the proportions in `ApeGlyph.tsx` are measured off it rather than eyeballed. Two of them are counter-intuitive enough to have been got wrong repeatedly, and are worth restating here because any future re-tune will hit them again:
+**Pose.** The knuckle-walking quadruped profile of the **gorilla emoji** (U+1F98D), facing left, with proportions measured off it rather than eyeballed. Profile was kept over a 3/4 view deliberately: every trait tell lives on the silhouette edge (crest on top of the skull, muzzle at the front, hump on top of the back, saddle along the back), and a 3/4 view turns the saddle's extent into an interior shading problem while adding a second eye and far cheek that are pure noise at 56px. Two of the proportions are counter-intuitive enough to have been got wrong repeatedly, and are worth restating because any future re-tune will hit them again:
 
 - **The head is the highest point, not the shoulder hump.** The hump sits behind the crown and about a fifth of the body's height lower.
 - **The torso is far wider than it is deep** (roughly 1.75:1). A torso that approaches circular reads as a bear regardless of what the head and limbs are doing.
 
-Two other rules earn their keep. The head must overlap the chest deeply — any exposed neck reads as a canid instantly. And the body, head and near limbs are all filled in one value, with separation coming from thin `--forest` contours clipped to the area *outside* the torso; giving the torso its own lighter fill breaks the silhouette into a shell sitting on tubes, and stroking a limb's full outline (including the part buried in the chest) makes the limbs read as boots.
+And the head must overlap the chest deeply — any exposed neck reads as a canid instantly.
+
+**Rendering.** One ink outline, one base fur value, then flat shadow and highlight masses clipped inside each part, lit from the upper left:
+
+1. Every part of the near silhouette (torso + hump, near limbs, head + crest) is drawn once as an *underlay* — filled *and* stroked in `--fur-deep` — and then again on top, filled in `--fur` with no stroke. The union of the underlays is the outline; the union of the fills covers every interior seam. Where a limb is buried in the chest, its stroke is simply painted over, so no contour is ever drawn there. This replaces the v0.4 mechanism (one fill value plus `--forest` contours clipped to the area *outside* the torso) but keeps its two lessons: never give the torso and limbs different *base* fills (the silhouette breaks into a shell sitting on tubes), and never stroke a limb's buried edge (the limbs read as boots).
+2. Shading is clipped to the part it belongs to, in that part's own coordinate space, so it rides along with the trait transforms. Torso: belly shadow, jaw shadow, hump highlight, back highlight. Limbs: a lit band down the leading edge, a shadow down the trailing edge, `--skin` knuckle pad and sole. Head: crown highlight, shadow where it meets the chest, the `--skin` face mask (brow shelf, eye socket, cheek, whole muzzle), ear, heavy brow ridge, dark eye with a `--paper` glint, nostril, mouth, cheek crease. Far limbs are outlined like everything else and then washed darker so they recede.
+3. **Silver never touches the frame.** `--silver` and `--rock` are the same luminance, so the saddle is clipped to the torso and an inner `--fur-deep` rim is re-stroked along the back *after* it. That rim traces the union of torso and hump only — stroking the hump ellipse in full draws a ring on the fur, which is exactly what happened first.
+
+**Trait encoding**, each exaggerated enough to read at 46px:
+
+| Trait | Tell |
+|---|---|
+| Age | Whole-animal scale (juveniles stand shorter), head size relative to body (juveniles largest), sagittal crest height (none / low / mid / tall), muzzle length, eye size (juveniles largest), and greying — elders get a `--silver` wash on the brow, temple and crest tip |
+| Build | Torso scale about the belly line, limb thickness, and the **shoulder hump** — an ellipse riding on the withers whose vertical radius is the single most legible build tell at 56px |
+| Silver | A saddle that grows in *area* along the withers→rump axis, not just in opacity: `none` is bare fur with a few dark hairs; `flecked` is a scatter of light hairs over the upper back with only a faint patch under them; `part-silver` is a solid patch to mid-back with hairs growing in at its edge; `full` runs to the rump and continues onto the near thigh. The patch edge is scalloped so it reads as fur, not a waterline |
+| Scar | One short diagonal `--blood` cut down the bare cheek, under the brow and behind the eye, over a faint dark edge. It sits on the `--skin` mask on purpose: a red stroke over near-black fur reads as a painted bar (the first v0.6 draft ran it from the crown and looked stuck on), over grey skin it reads as a healed wound. It must never paint over the eye |
+
+The engine's gating (juveniles carry at most `flecked`, subadults at most `part-silver`) makes 78 valid portraits. **`/dev/apes`** renders all of them, at 56px and at 46px, on the same `--rock` disc a rung uses; it is mounted only under `import.meta.env.DEV` and is the only test the portrait has. Eyeball the whole matrix after any change to the tables in `ApeGlyph.tsx`.
 
 A player should be able to read a rung before reading its label. Rung portraits render at 56px. If portraits stop being legible at 46px, simplify the silhouette rather than enlarging the glyph.
 
@@ -393,7 +415,7 @@ Result state replaces the submit block with headline + grid + copy button. The a
 
 - Rungs are `<button>` elements in DOM order; tab moves down the ladder, Enter selects/swaps.
 - Feedback is never color-only — `■`, `○` glyphs accompany every state.
-- Contrast (recomputed for the v0.4 palette): `--forest` on `--paper` (primary text on the page) is ~12.7:1; `--moss` on `--paper` (secondary text on the page) is ~9.7:1; `--paper` on `--bark` (name text on a rung) is ~5.75:1; `--mist` on `--bark` (secondary text on a rung) is ~4.65:1; `--banana` on `--bark` (the correct-rung glyph) is ~4.3:1. Verify any new pairing at 4.5:1 minimum — `--banana` on `--bark` is the one pairing that runs slightly under that on paper, tolerated only because the ■/○ glyph shape (next bullet) already carries the signal independent of color.
+- Contrast (recomputed for the v0.4 palette): `--forest` on `--paper` (primary text on the page) is ~12.7:1; `--moss` on `--paper` (secondary text on the page) is ~9.7:1; `--paper` on `--bark` (name text on a rung) is ~5.75:1; `--mist` on `--bark` (secondary text on a rung) is ~4.65:1; `--banana` on `--bark` (the correct-rung glyph) is ~4.3:1. Verify any new pairing at 4.5:1 minimum — `--banana` on `--bark` is the one pairing that runs slightly under that on paper, tolerated only because the ■/○ glyph shape (next bullet) already carries the signal independent of color. Portrait pairings (v0.6): `--fur` on `--rock` (the silhouette on its disc) is ~8.6:1; `--silver` on `--fur` (the saddle on the body) is ~8.5:1; `--silver` on `--rock` is ~1:1, which is why the portrait keeps a `--fur-deep` outline between any silver and the frame.
 - `aria-live="polite"` region announces the result of each submission ("Rung 3 correct, four rungs wrong").
 - Full keyboard play with no pointer.
 - Target size ≥ 44px on every interactive element.

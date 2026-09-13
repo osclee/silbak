@@ -33,7 +33,9 @@ npx tsx scripts/playtest-cli.ts guess <puzzleNumber> <id0,id1,...>
 ```
 This is the harness for blind CLI-based playtesting (never prints the solution) — see the `playtest-puzzles` skill (`.claude/skills/playtest-puzzles/SKILL.md`) for the full large-scale-playtest workflow, including a known tsx-cache-contention stall pattern when running many agents against it in parallel and how to recover from it.
 
-There is no dev server managed outside the Browser-pane tooling — `.claude/launch.json` defines the `silbak-web` config (`pnpm --filter @silbak/web dev` on port 5173) that preview tooling uses to start it.
+There is no dev server managed outside the Browser-pane tooling — `.claude/launch.json` defines the `silbak-web` config (`pnpm --filter @silbak/web dev` on port 5173, `autoPort` enabled; `vite.config.ts` honors a `PORT` env var so a second session can get a free port when 5173 is taken) that preview tooling uses to start it.
+
+**Checking the ape portraits:** `/dev/apes` (mounted only under `import.meta.env.DEV`, route in `App.tsx`, page in `src/routes/DevApes.tsx`) renders every valid trait combination at 56px and 46px on the rung's `--rock` disc. It is the only test `ApeGlyph.tsx` has — eyeball the whole matrix after touching its trait tables or geometry.
 
 ## Architecture
 

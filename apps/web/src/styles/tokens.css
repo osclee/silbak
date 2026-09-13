@@ -8,6 +8,15 @@
   --banana: #ffc93c;
   --blood: #e14e2e;
 
+  /* Gorilla portrait palette (ApeGlyph only). Natural fur ladder, darkest to lightest,
+     plus skin and silver. --silver is luminance-matched to --rock, so the portrait's
+     --fur-deep outline must always sit between any silver and the frame. */
+  --fur-deep: #1a1614;
+  --fur: #2e2622;
+  --fur-light: #5a4d44;
+  --skin: #5c5654;
+  --silver: #c2beb6;
+
   --font-display: "IBM Plex Sans Condensed", sans-serif;
   --font-body: "IBM Plex Sans", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
