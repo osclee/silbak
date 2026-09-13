@@ -1,0 +1,29 @@
+:root {
+  --paper: #fbefd3;
+  --forest: #1c2e19;
+  --bark: #186b37;
+  --rock: #e3c08a;
+  --mist: #c9e0bc;
+  --moss: #463a28;
+  --banana: #ffc93c;
+  --blood: #e14e2e;
+
+  --font-display: "IBM Plex Sans Condensed", sans-serif;
+  --font-body: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius: 14px;
+  --radius-sm: 4px;
+  --focus-ring: 2px solid var(--forest);
+
+  --motion-fast: 80ms;
+  --motion-medium: 220ms;
+}

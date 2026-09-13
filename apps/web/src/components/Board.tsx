@@ -1,0 +1,75 @@
+import { useGameStore } from "../state/useGameStore";
+import { Ladder } from "./Ladder";
+import { FieldNotes } from "./FieldNotes";
+import { Legend } from "./Legend";
+import { AttemptsHistory } from "./AttemptsHistory";
+import { ResultCard } from "./ResultCard";
+import styles from "./Board.module.css";
+
+interface BoardProps {
+  dateHeader?: string;
+}
+
+export function Board({ dateHeader }: BoardProps) {
+  const { puzzle, arrangement, selected, history, status, streak, isArchive, revealOrder, select, submit } =
+    useGameStore();
+
+  const guessesLeft = 6 - history.length;
+
+  return (
+    <div className={styles.board}>
+      <header className={styles.header}>
+        <span className={styles.eyebrow}>
+          Karisoke observation log · Troop #{puzzle.number}
+          {dateHeader ? ` · ${dateHeader}` : ""}
+        </span>
+        <h1 className={styles.title}>
+          <span className={styles.titleLight}>SIL</span>
+          <span className={styles.titleAccent}>BAK</span>
+        </h1>
+        <p className={styles.rules}>
+          Six apes, one hierarchy. Tap two to swap them, then submit your ranking. Traits tell you
+          something — but not everything.
+        </p>
+      </header>
+
+      <FieldNotes clues={puzzle.clues} />
+      <Legend />
+
+      <Ladder
+        troop={puzzle.troop}
+        arrangement={arrangement}
+        selected={selected}
+        lastEntry={history[history.length - 1]}
+        playing={status === "playing"}
+        onSelect={select}
+      />
+
+      {status === "playing" ? (
+        <div className={styles.controls}>
+          <button type="button" className={styles.submit} onClick={submit}>
+            Submit ranking
+          </button>
+          <div className={styles.hintRow}>
+            <span>
+              {guessesLeft} guess{guessesLeft === 1 ? "" : "es"} left
+            </span>
+            <span>Tap an ape to move it</span>
+          </div>
+        </div>
+      ) : (
+        <ResultCard
+          status={status}
+          history={history}
+          puzzleNumber={puzzle.number}
+          troop={puzzle.troop}
+          revealOrder={revealOrder ?? []}
+          streak={streak}
+          isArchive={isArchive}
+        />
+      )}
+
+      <AttemptsHistory history={history} />
+    </div>
+  );
+}

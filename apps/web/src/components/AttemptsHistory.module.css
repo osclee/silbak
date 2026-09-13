@@ -1,0 +1,29 @@
+.attempts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: var(--space-1) var(--space-2);
+  background: var(--bark);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--mist);
+}
+
+.cell {
+  font-size: 0.85rem;
+}
+
+.exact {
+  color: var(--banana);
+}
+
+.wrong {
+  color: var(--mist);
+}

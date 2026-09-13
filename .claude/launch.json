@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "silbak-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@silbak/web", "dev"],
+      "port": 5173
+    }
+  ]
+}

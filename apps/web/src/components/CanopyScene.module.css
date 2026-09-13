@@ -1,0 +1,370 @@
+/*
+ * Every animation in here is ambient background texture, never feedback —
+ * nothing about puzzle state is communicated through motion (DESIGN.md §6).
+ * Periods are long (7–17s) and deliberately coprime-ish so layers drift out
+ * of phase with each other instead of pulsing in lockstep; that lack of a
+ * detectable beat is what makes it read as a breeze rather than a loop.
+ *
+ * `prefers-reduced-motion` is handled globally by the `*` rule in
+ * global.css, which collapses every animation-duration — these loops don't
+ * need their own opt-out.
+ */
+
+.scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Sky: light filtering down from a canopy gap, warm at the top, cooling into
+   green further into the understory. */
+.sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 60% at 68% -8%, color-mix(in srgb, var(--paper) 92%, white) 0%, transparent 62%),
+    /* Kept deliberately close to `--paper`: the sky is the value every foliage
+       depth has to separate from, so it stays out of the foliage ramp's range
+       entirely rather than meeting it in the middle. */
+    linear-gradient(
+      to bottom,
+      var(--paper) 0%,
+      color-mix(in srgb, var(--mist) 16%, var(--paper)) 42%,
+      color-mix(in srgb, var(--mist) 28%, var(--paper)) 78%,
+      color-mix(in srgb, var(--mist) 40%, var(--paper)) 100%
+    );
+}
+
+/* ---- Sun shafts ------------------------------------------------------- */
+
+.shafts {
+  position: absolute;
+  inset: -6% 0 0 0;
+  overflow: hidden;
+}
+
+/*
+ * Sun shafts read by being WARM, not by being lighter.
+ *
+ * The first cut filled these with `--paper` over a sky that is itself nearly
+ * `--paper` — invisible, and the same light-on-light mistake the foliage ramp
+ * made. `--paper` is already the lightest token, so "brighter than the sky"
+ * has nowhere to go; a shaft can only separate here by shifting hue. Filling
+ * them with warm `--rock` against the sky's cool `--mist` tint gets contrast
+ * from temperature instead of value, which is what afternoon sun through a
+ * canopy actually looks like. (`--banana` would be the natural choice and is
+ * reserved for correctness per §6 — this is why the mix leans on `--rock`.)
+ */
+.shaft {
+  position: absolute;
+  top: 0;
+  height: 128%;
+  transform-origin: top center;
+  transform: rotate(16deg);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--rock) 62%, var(--paper)) 0%,
+    color-mix(in srgb, var(--rock) 34%, var(--paper)) 40%,
+    transparent 84%
+  );
+  filter: blur(16px);
+  animation-name: breathe;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: rotate(16deg) translateX(-14px);
+  }
+  50% {
+    opacity: 0.62;
+    transform: rotate(19deg) translateX(14px);
+  }
+}
+
+/* ---- Trunks ----------------------------------------------------------- */
+
+.trunks {
+  position: absolute;
+  inset: 0;
+}
+
+/* top/bottom 0 is the whole trick: a vertical element covers any page height
+   without tiling, measurement, or a ResizeObserver. */
+.trunk {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.notch {
+  position: absolute;
+  background: var(--moss);
+  opacity: 0.34;
+}
+
+/* ---- Canopy band ------------------------------------------------------ */
+
+.canopyBand {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 340px;
+  display: block;
+}
+
+/* Three depths, three different periods and amplitudes: far foliage barely
+   stirs, near foliage moves most. That parallax of *motion* (not just color)
+   is what keeps the band from reading as one flat cutout. */
+.canopySlow,
+.canopyMid,
+.canopyNear {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.canopySlow {
+  animation-name: swayFar;
+}
+
+.canopyMid {
+  animation-name: swayMid;
+}
+
+.canopyNear {
+  animation-name: swayNear;
+}
+
+@keyframes swayFar {
+  0%,
+  100% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes swayMid {
+  0%,
+  100% {
+    transform: translateX(-6px) rotate(-0.35deg);
+  }
+  50% {
+    transform: translateX(6px) rotate(0.35deg);
+  }
+}
+
+@keyframes swayNear {
+  0%,
+  100% {
+    transform: translateX(-10px) rotate(-0.7deg);
+  }
+  50% {
+    transform: translateX(10px) rotate(0.7deg);
+  }
+}
+
+.vine {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation-name: swayVine;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes swayVine {
+  0%,
+  100% {
+    transform: rotate(-2.2deg);
+  }
+  50% {
+    transform: rotate(2.2deg);
+  }
+}
+
+/* ---- Mid-page boughs -------------------------------------------------- */
+
+.boughs {
+  position: absolute;
+  inset: 0;
+}
+
+.bough {
+  position: absolute;
+  display: block;
+  overflow: visible;
+}
+
+.boughSway {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation-name: swayBough;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes swayBough {
+  0%,
+  100% {
+    transform: rotate(-1.6deg) translateY(-2px);
+  }
+  50% {
+    transform: rotate(1.6deg) translateY(2px);
+  }
+}
+
+/* ---- Understory ------------------------------------------------------- */
+
+.understory {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 230px;
+  display: block;
+}
+
+.frond {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation-name: swayFrond;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes swayFrond {
+  0%,
+  100% {
+    transform: rotate(-2.6deg);
+  }
+  50% {
+    transform: rotate(2.6deg);
+  }
+}
+
+/* ---- Motes ------------------------------------------------------------ */
+
+.motes {
+  position: absolute;
+  inset: 0;
+}
+
+/* Warm, for the same reason as the shafts: a `--paper` mote on a nearly
+   `--paper` sky is a dead pixel, not pollen. `--rock` carries the warm-lit
+   read against the sky's cool tint, with a `--moss` rim so the dot still has
+   an edge where it drifts across a light patch. */
+.mote {
+  position: absolute;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--rock) 82%, var(--moss));
+  box-shadow: 0 0 5px color-mix(in srgb, var(--rock) 60%, transparent);
+  animation-name: driftMote;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/* Motes rise and fade rather than bobbing in place — pollen caught in a
+   draft. `--drift` is set per-mote inline so no two share a path. */
+@keyframes driftMote {
+  0% {
+    transform: translate(0, 12px);
+    opacity: 0;
+  }
+  22% {
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(var(--drift), -46px);
+    opacity: 0;
+  }
+}
+
+/* ---- Overlay ---------------------------------------------------------- */
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.045) 0px,
+    rgba(0, 0, 0, 0.045) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: multiply;
+}
+
+/*
+ * The board is a fixed 560px centered, so the margin available for foliage is
+ * `(100vw - 560px) / 2` — it collapses fast, and the scene sheds whole
+ * categories of element as it does. Shedding beats shrinking: a scaled-down
+ * bough detaches from the trunk it is supposed to be growing out of, and a
+ * merely faded one still sits behind a `--bark` card, which §6 forbids.
+ */
+
+/* ~1200px: the innermost tier on each side would start crowding the board. */
+@media (max-width: 1200px) {
+  .trunk[data-tier="inner"],
+  .bough[data-tier="inner"] {
+    display: none;
+  }
+}
+
+/* ~1024px: a 200px bough no longer fits beside the board on either side, so
+   the boughs go entirely. Trunks, bands, shafts and motes still carry the
+   framing, and the mid trunk tier drops with them to keep the margins clean. */
+@media (max-width: 1024px) {
+  .boughs {
+    display: none;
+  }
+
+  .trunk[data-tier="mid"] {
+    display: none;
+  }
+}
+
+/* ~720px: the content column runs edge to edge, so vertical trunks are
+   guaranteed to sit behind text — and at this width their bark striations
+   read as noise rather than grain. Drop them and keep only the top and
+   bottom bands, which frame content without ever getting behind it. */
+@media (max-width: 720px) {
+  .trunks {
+    display: none;
+  }
+
+  .canopyBand {
+    height: 190px;
+  }
+
+  /*
+   * The understory anchors to the bottom of the page and the guess counter is
+   * the last thing on the page, so on a narrow screen they necessarily
+   * overlap — there is no placement that avoids it. Measured at full strength
+   * the footer text sat on a mid-green frond at 2.36:1, a straight §8 failure
+   * (desktop is fine at 4.87:1 because the wider band puts paler fronds
+   * there). Held to a faint wash so the darkest frond still composites light
+   * enough to keep that text above 4.5:1.
+   */
+  .understory {
+    height: 120px;
+    opacity: 0.42;
+  }
+
+  .shaft {
+    opacity: 0.5;
+  }
+}

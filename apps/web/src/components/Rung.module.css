@@ -1,0 +1,90 @@
+.rung {
+  display: grid;
+  grid-template-columns: 12ch auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bark);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--paper);
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--motion-fast) ease, border-color var(--motion-fast) ease;
+}
+
+.rung:hover:not(:disabled) {
+  border-color: var(--rock);
+}
+
+.rung:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.selected {
+  border-color: var(--banana);
+  transform: translateX(5px);
+}
+
+.rank {
+  font-family: var(--font-mono);
+  color: var(--mist);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.portrait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--rock);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.traits {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--mist);
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.feedback {
+  font-size: 1.1rem;
+  width: 1.5rem;
+  text-align: center;
+}
+
+.exact {
+  color: var(--banana);
+}
+
+.wrong {
+  color: var(--mist);
+}

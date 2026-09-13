@@ -1,0 +1,29 @@
+.appRoot {
+  position: relative;
+  min-height: 100vh;
+}
+
+.nav {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: var(--space-3);
+  /* border-bottom: 1px solid var(--bark); */
+}
+
+.link {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--moss);
+  text-decoration: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.link:hover {
+  color: var(--forest);
+}
