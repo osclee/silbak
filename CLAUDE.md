@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Silbak is a Wordle-style daily deduction game: rank a troop of gorillas from silverback (most dominant) to omega (least) using field-note clues and visible traits, then get per-position feedback after each guess. Design spec lives in `docs/DESIGN.md` — read it before making any change to generation logic, feedback semantics, or visual tokens; it documents *why* things are the way they are, not just what they are, and should be kept in sync when those decisions change.
 
+`docs/REVIEW-2026-09-13.md` is the current executive review and phased implementation plan (Part B). When asked to improve the game without a more specific brief, work its phases in order, and update its findings if the code has moved on since it was written.
+
 ## Commands
 
 All commands assume `pnpm` (workspace-aware; `packageManager` is pinned in root `package.json`). Root-level scripts fan out through Turborepo to every workspace package:
