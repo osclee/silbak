@@ -1,0 +1,10 @@
+.panel {
+  max-width: 480px;
+  margin: var(--space-6) auto;
+  padding: var(--space-4);
+  background: var(--card);
+  border-radius: var(--radius);
+  color: var(--paper);
+  font-family: var(--font-body);
+  text-align: center;
+}

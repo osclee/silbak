@@ -28,10 +28,6 @@ const SWAP_MS = 260;
  *  off the edge of a phone screen. */
 const SWAP_LEAN_PX = 10;
 
-function arraysEqual(a: readonly number[], b: readonly number[]): boolean {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
-}
-
 /** The global `*` rule in global.css only collapses CSS animations and
  *  transitions; a Web Animations API animation is invisible to it, so the swap
  *  flight has to opt out by hand. Doubles as the guard for environments with no
@@ -44,7 +40,6 @@ function motionAllowed(): boolean {
 
 export function Ladder({ troop, arrangement, selected, lastEntry, playing, onSelect }: LadderProps) {
   const apesById = new Map(troop.map((a) => [a.id, a]));
-  const showFeedback = lastEntry && arraysEqual(lastEntry.arrangement, arrangement);
 
   const nodes = useRef(new Map<ApeId, HTMLButtonElement>());
   const flights = useRef(new Map<ApeId, Animation>());
@@ -127,7 +122,7 @@ export function Ladder({ troop, arrangement, selected, lastEntry, playing, onSel
             index={i}
             total={arrangement.length}
             ape={ape}
-            feedback={showFeedback ? lastEntry!.feedback[i] : undefined}
+            feedback={lastEntry && lastEntry.arrangement[i] === apeId ? lastEntry.feedback[i] : undefined}
             selected={selected === i}
             disabled={!playing}
             onSelect={() => handleSelect(i)}

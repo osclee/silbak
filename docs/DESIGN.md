@@ -2,8 +2,12 @@
 
 > A daily deduction game. Rank six apes in a gorilla troop from silverback to omega in six guesses.
 
-Status: draft v0.8 · Owner: Oz · Last updated: 2026-09-13
+Status: draft v0.10 · Owner: Oz · Last updated: 2026-09-13
 
+> **v0.10 changelog:** persistence and the archive were both wrong in ways that only showed up a day later (`docs/REVIEW-2026-09-13.md` Phase 2). `submit()` now writes `streak`/`played` itself at the terminal guess instead of waiting for the next day's `load()` to roll it over — the old path meant a win never updated the streak until tomorrow, and merely opening the app on a day you didn't play recorded a loss, since `load()` used to persist a placeholder `current` on first open. `load()` no longer does that; `applyRollover` is now a safety net (a day with no guesses leaves no trace; a day whose terminal submit already recorded itself is a no-op, so nothing double-counts). An open tab left running past local midnight now notices via `visibilitychange`/`focus`/a 60s check, instead of only rolling over on the next full page load. The archive no longer leaks today or future dates (`/archive/<n>` redirects home or to `/archive` outside `[1, today)`) and gained a top-level error boundary instead of a white screen on a malformed URL; its list now shows each day's date/weekday and a 🍌/🪨 result marker instead of a bare puzzle number and a "Silbak epoch" line. See §9.5.
+>
+> **v0.9 changelog:** the board now supports deduction instead of fighting it (`docs/REVIEW-2026-09-13.md` Phase 1). Three changes, shipped together because testers hit all three in the same sitting: (1) feedback on a rung now persists until that rung's occupant changes, instead of the whole board's glyphs vanishing on any swap; (2) the attempts history renders each past arrangement (short name + glyph per rung), not just its feedback, since binary feedback is a position-elimination game and elimination is impossible without seeing what was where; (3) resubmitting an arrangement identical to the last graded one is now blocked, both at the button and in the store, since it can't teach the player anything. See §2 and §7.
+>
 > **v0.8 changelog:** picking up a rung and swapping two of them are now visible events. Selection recolours the whole rung — `--moss` surface, `--rock` ring, a 10px nudge — instead of tinting a 1px border `--banana`, which was both easy to miss and a borrow of the one reserved token (§6). A swap animates: the two rungs fly to each other's slots in 260ms, the rising one passing in front with a lift shadow. See §6 (Tokens, and the selected-rung note) and Motion.
 >
 > **v0.7 changelog:** a new `--card` token (`#2A7744`) gives every panel — result card, field notes, archive list, and the Rung itself — a softer, lighter green than `--bark`. `--card` is a blend toward `--mist` chosen to clear >=3:1 contrast against `--banana` (large text/UI components) and >=4.5:1 against `--paper`/`--mist` body text, so it reads lighter without repeating the pastel-panel mistake the v0.4 reversion already documented. Putting `--card` under the Rung meant the "correct rung" glyph (`.exact`, `--banana` on the panel) no longer clears 4.5:1 at its old regular weight/1.1rem size, so it went to 700/1.2rem to qualify as large text at the 3:1 threshold instead — see §6, "Why the panel green didn't go all the way to pastel". `--bark` itself is unchanged and still used where a panel isn't a "card" (attempt-history chips, `/dev/apes`).
@@ -58,6 +62,8 @@ Multiplayer, real-time play, unlimited/endless mode, accounts, leaderboards, mon
 | `wrong` | This ape does not belong on this rung — no information about which way to move it |
 
 Feedback is per-position and total — every rung always returns one of the two. There is no "no information" state.
+
+Feedback persists on a rung until that rung's occupant changes: swapping two rungs clears their glyphs (their graded state no longer matches what's shown) but leaves every other rung's `■`/`○` in place, since the player didn't touch them. This is what makes position-elimination possible across a swap — the alternative (clearing the whole board on any move) forced the player to memorize prior feedback before touching anything.
 
 **Limit.** Six guesses. Win on all-`exact`. Loss reveals the true order.
 
@@ -423,9 +429,13 @@ As of v0.4, the canopy scene (previous section) adds a second, deliberately sepa
 │  [ SUBMIT RANKING ]         │
 │  4 guesses left   tap hint  │
 ├─────────────────────────────┤
-│  ATTEMPTS (compact chips)   │
+│  ATTEMPTS                   │
+│  #1  HESH○ BARA○ TAJI○ ...  │
+│  #2  BARA○ HESH○ TAJI○ ...  │
 └─────────────────────────────┘
 ```
+
+Each attempts row shows the full submitted arrangement, not just its feedback: one cell per rung, a four-letter name clipped from the ape's full name plus its `■`/`○` glyph. Binary feedback makes past arrangements load-bearing — "Kanzi was wrong at rung 3 in guess 2" is only recoverable if guess 2's rung 3 occupant is still on screen — so the history can't be glyph-only chips the way a ternary-feedback game's could be. The submit button (and the keyboard path in the store) refuses to resubmit an arrangement identical to the last graded one, since that guess teaches nothing new.
 
 Result state replaces the submit block with headline + grid + copy button. The archive (`/archive/:number`) reuses the identical board with a date header and no streak effect.
 
@@ -449,4 +459,4 @@ Result state replaces the submit block with headline + grid + copy button. The a
 2. ~~Five apes vs six.~~ **Resolved in v0.3 — switched to six.** Prototyped as an isolated parallel engine (`packages/engine/src/proto6/` at the time), validated via simulation (avg guesses climbs to ~3.3-3.5 at the new ceiling vs 5-ape's ~2.9 max, first-ever 5-guess optimal-play trials) and a 75-puzzle agent playtest (avg 2.17 vs 5-ape's 1.87, 0 losses either way), then promoted to replace the 5-ape engine outright. The seventh-guess concern didn't materialize — 6 guesses stayed sufficient at every difficulty level tested, including the 504-permutation structural ceiling. One real caveat surfaced by the playtest, not resolvable by simulation: hand-tracking six traits felt like genuine bookkeeping overhead via a CLI harness; worth watching whether the real visual ladder UI keeps that feeling like reasoning rather than tedium.
 3. **Should traits be hidden until guess two?** Would create a genuine opening decision but breaks the "learnable in one turn" pillar.
 4. **Hard mode.** Candidate rule: any rung marked `exact` locks and cannot be swapped. Cheap to build, well-understood by the audience. Worth revisiting after v0.2's manual playtest results — if binary feedback alone plays well, hard mode may be unnecessary extra complexity; if it doesn't, hard mode is the next lever before touching ape count.
-5. **Streak semantics.** Does the archive count toward streaks? Recommend no — archive is practice, dailies are the streak.
+5. ~~Streak semantics.~~ **Resolved in v0.10.** Archive is practice — it never touches `streak` or `played` (`useGameStore.ts`'s `submit()` guards on `isArchive`). For the daily: streak = consecutive daily wins, updated at the terminal submit (the moment the day's outcome is knowable), not on the next day's rollover. An opened-but-unplayed day is neither a win nor a loss and leaves no trace — only a day with at least one submitted guess can affect the streak.

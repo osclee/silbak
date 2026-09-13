@@ -14,11 +14,9 @@ export interface PersistedCurrent {
 
 export interface Persisted {
   v: 1;
-  deviceId: string;
   current?: PersistedCurrent;
   streak: { count: number; max: number; lastPlayedKey: string };
   played: Record<number, { guesses: number; solved: boolean }>;
-  prefs: { reducedMotion?: boolean; highContrast?: boolean };
 }
 
 const STORAGE_KEY = "silbak:v1";
@@ -45,10 +43,8 @@ function dateKeyFromDate(d: Date): string {
 function emptyPersisted(): Persisted {
   return {
     v: 1,
-    deviceId: crypto.randomUUID(),
     streak: { count: 0, max: 0, lastPlayedKey: "" },
     played: {},
-    prefs: {},
   };
 }
 

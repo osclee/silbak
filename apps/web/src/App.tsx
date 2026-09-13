@@ -5,6 +5,7 @@ import { Archive } from "./routes/Archive";
 import { ArchivePuzzle } from "./routes/ArchivePuzzle";
 import { About } from "./routes/About";
 import { CanopyScene } from "./components/CanopyScene";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import styles from "./App.module.css";
 
 // Dev-only portrait matrix. The DEV guard is statically replaced at build time and
@@ -26,22 +27,24 @@ export function App() {
           Rules
         </Link>
       </nav>
-      <Routes>
-        <Route path="/" element={<Daily />} />
-        <Route path="/archive" element={<Archive />} />
-        <Route path="/archive/:number" element={<ArchivePuzzle />} />
-        <Route path="/about" element={<About />} />
-        {DevApes ? (
-          <Route
-            path="/dev/apes"
-            element={
-              <Suspense fallback={null}>
-                <DevApes />
-              </Suspense>
-            }
-          />
-        ) : null}
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<Daily />} />
+          <Route path="/archive" element={<Archive />} />
+          <Route path="/archive/:number" element={<ArchivePuzzle />} />
+          <Route path="/about" element={<About />} />
+          {DevApes ? (
+            <Route
+              path="/dev/apes"
+              element={
+                <Suspense fallback={null}>
+                  <DevApes />
+                </Suspense>
+              }
+            />
+          ) : null}
+        </Routes>
+      </ErrorBoundary>
     </div>
   );
 }
