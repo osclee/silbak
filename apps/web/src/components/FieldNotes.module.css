@@ -1,6 +1,6 @@
 .notes {
   padding: var(--space-4);
-  background: var(--bark);
+  background: var(--card);
   border-radius: var(--radius);
 }
 

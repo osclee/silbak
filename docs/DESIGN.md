@@ -2,8 +2,10 @@
 
 > A daily deduction game. Rank six apes in a gorilla troop from silverback to omega in six guesses.
 
-Status: draft v0.6 · Owner: Oz · Last updated: 2026-09-12
+Status: draft v0.7 · Owner: Oz · Last updated: 2026-09-12
 
+> **v0.7 changelog:** a new `--card` token (`#2A7744`) gives the result card, field notes, and archive list a softer, lighter green than `--bark`, without touching `--bark` itself — the Rung still needs it mid-dark for the `--banana` glow-on-submit contrast (see §6, "Why the panel green didn't go all the way to pastel"). `--card` is a blend toward `--mist` chosen to keep >=3:1 contrast against `--banana` (the won-state headline) and >=4.5:1 against `--paper`/`--mist` (body text), so it reads lighter without repeating the pastel-panel mistake the v0.4 reversion already documented.
+>
 > **v0.6 changelog:** the ape portraits were redrawn as a layered retro-vector cel in natural gorilla colors. They no longer borrow the page's green tokens by value; they own a five-token fur/skin/silver palette of their own, which retires the constraint that once pinned `--bark` to the portrait (see §6, "Why the panel green didn't go all the way to pastel"). Shading is flat shadow and highlight masses clipped inside each part, the silhouette is inked by a fattened underlay rather than per-part contours, and two trait tells were added (a shoulder hump for build, greying for elders). A dev-only `/dev/apes` route renders the whole valid trait matrix at 56px and 46px for eyeballing. See §6, Portraits.
 >
 > **v0.5 changelog:** the canopy backdrop was rebuilt from a tiled SVG `<pattern>` into a stack of height-agnostic layers (full-height trunks, edge-anchored canopy/understory bands, percentage-placed boughs and motes). Three measured defects forced it: nothing inside `<defs>` ever animated, so the documented canopy sway had never once rendered; the tile's `ResizeObserver` height never landed, seaming the page mid-scroll; and a single repeated tile cannot produce a forest. The palette is untouched — depth now comes from `color-mix()` blends of existing tokens. See §6 for the architecture and the traps.
@@ -213,6 +215,7 @@ The world is still a primatology field station in montane cloud forest, not a zo
 --paper   #FBEFD3   page ground (warm banana-cream) + text/highlight on dark panels + the eye glint on portraits
 --forest  #1C2E19   ink — primary text, focus ring
 --bark    #186B37   panels, rungs — the "make the green lighter" token
+--card    #2A7744   softer/lighter panel green: result card, field notes, archive list (v0.7)
 --rock    #E3C08A   wood-tone: portrait frame background, inert/disabled, hover borders
 --mist    #C9E0BC   secondary text on dark bark panels (rank, traits, "wrong rung" feedback)
 --moss    #463A28   secondary text directly on the page ground (eyebrow, rules, nav links, notes)
@@ -244,6 +247,8 @@ The obvious reading of "lighter" is: make every green as light as the new cream 
 - *(Retired in v0.6, kept as a documented reversal.)* Through v0.5 the ape portraits were built from exactly three of these tokens by *value*, not by name: `--forest` the darkest thing on the glyph, `--bark` the mid-value body fill, `--paper` the lightest (eye dot, fur speckles, full-silver mantle). That pinned `--bark` from above — if it drifted toward `--paper`, the eye and the silvering stopped popping off the body — and it is why the panel green was kept at `#186B37` rather than lighter (`#16251D` → `#186B37` is roughly a 14x jump in relative luminance — very much "lighter," just not pastel). As of v0.6 the portrait owns its own palette (`--fur-deep`/`--fur`/`--fur-light`/`--skin`/`--silver`, above) and places no constraint on the page greens at all. The `--banana` contrast reason in the previous bullet is the only one that still holds, and it is sufficient on its own.
 
 So the panel green got vivid, not pale — and although the portrait no longer needs it dark, `--banana` still does. "Lighter" landed on the page ground (which has no such constraint) and on making every green in the palette a *real* green instead of a near-black one, rather than on flattening the whole app to one brightness band.
+
+**v0.7** split the difference instead of relitigating it: panels that never carry a glowing `--banana` submit state — the result card, field notes, the archive list — get their own lighter `--card` token, while the Rung keeps `--bark`. `--card` is deliberately not a straight lighten of `--bark`; it's chosen to stay under the luminance ceiling `--banana` needs (still >=3:1 on the result card's won-state headline) while clearing 4.5:1 against `--paper`/`--mist` body text — lighter and softer, not pastel.
 
 ### Wood and red, brought forward
 

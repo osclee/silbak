@@ -7,6 +7,10 @@
   --moss: #463a28;
   --banana: #ffc93c;
   --blood: #e14e2e;
+  /* Softer, lighter green for card-style panels (result card, field notes, archive
+     list) that don't carry the Rung's --banana glow-on-submit contrast requirement.
+     --bark stays mid-dark for that reason — see DESIGN.md §6. */
+  --card: #2a7744;
 
   /* Gorilla portrait palette (ApeGlyph only). Natural fur ladder, darkest to lightest,
      plus skin and silver. --silver is luminance-matched to --rock, so the portrait's
