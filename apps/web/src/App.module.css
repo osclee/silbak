@@ -15,9 +15,10 @@
 .link {
   font-family: var(--font-mono);
   font-size: 0.8rem;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--moss);
+  color: var(--forest);
   text-decoration: none;
   min-height: 44px;
   display: flex;
@@ -25,5 +26,5 @@
 }
 
 .link:hover {
-  color: var(--forest);
+  color: var(--bark);
 }
