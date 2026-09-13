@@ -12,7 +12,8 @@
   color: var(--paper);
   text-align: left;
   cursor: pointer;
-  transition: transform var(--motion-fast) ease, border-color var(--motion-fast) ease;
+  transition: transform var(--motion-fast) ease, border-color var(--motion-fast) ease,
+    background-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
 }
 
 .rung:hover:not(:disabled) {
@@ -24,9 +25,35 @@
   opacity: 0.75;
 }
 
+/* Selected = "picked up off the ladder", and it changes the whole surface
+   rather than a 1px edge — a border recolour was too easy to miss on a board
+   where every rung is the same green. Two constraints picked this colour:
+
+   1. It can't be --banana (the old border colour). DESIGN.md §6 reserves
+      --banana for correctness; selection was borrowing it exactly the way the
+      focus ring did before v0.4.
+   2. It has to stay dark. A rung can be selected while last guess's feedback
+      is still showing, and every mark already printed on a rung is light:
+      against --moss the --paper name holds 9.7:1, --mist traits and the
+      "wrong" glyph 7.8:1, the --banana "correct" glyph 7.2:1, and the --rock
+      portrait disc 6.4:1. The light-surface version of this (--rock) was tried
+      first and rejected — --banana on --rock is 1.12:1, so picking up a rung
+      that had been marked correct erased its glyph. --moss against --card, the
+      surface it replaces, is 2.0:1, which is the jump doing the work here. */
 .selected {
-  border-color: var(--banana);
-  transform: translateX(5px);
+  background: var(--moss);
+  border-color: var(--rock);
+  box-shadow: 0 0 0 2px var(--rock);
+  transform: translateX(10px);
+}
+
+/* Worn only for the length of a swap, by the rung travelling *up* the ladder
+   (Ladder.tsx). Every rung is the same green, so two of them crossing overlap
+   into one indistinct shape; the shadow is what says one card lifted over the
+   other rather than melting through it. It fades in and out with the rung's
+   box-shadow transition, so nothing pops. */
+.lifted {
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--forest) 38%, transparent);
 }
 
 .rank {

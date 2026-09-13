@@ -2,8 +2,10 @@
 
 > A daily deduction game. Rank six apes in a gorilla troop from silverback to omega in six guesses.
 
-Status: draft v0.7 · Owner: Oz · Last updated: 2026-09-12
+Status: draft v0.8 · Owner: Oz · Last updated: 2026-09-13
 
+> **v0.8 changelog:** picking up a rung and swapping two of them are now visible events. Selection recolours the whole rung — `--moss` surface, `--rock` ring, a 10px nudge — instead of tinting a 1px border `--banana`, which was both easy to miss and a borrow of the one reserved token (§6). A swap animates: the two rungs fly to each other's slots in 260ms, the rising one passing in front with a lift shadow. See §6 (Tokens, and the selected-rung note) and Motion.
+>
 > **v0.7 changelog:** a new `--card` token (`#2A7744`) gives every panel — result card, field notes, archive list, and the Rung itself — a softer, lighter green than `--bark`. `--card` is a blend toward `--mist` chosen to clear >=3:1 contrast against `--banana` (large text/UI components) and >=4.5:1 against `--paper`/`--mist` body text, so it reads lighter without repeating the pastel-panel mistake the v0.4 reversion already documented. Putting `--card` under the Rung meant the "correct rung" glyph (`.exact`, `--banana` on the panel) no longer clears 4.5:1 at its old regular weight/1.1rem size, so it went to 700/1.2rem to qualify as large text at the 3:1 threshold instead — see §6, "Why the panel green didn't go all the way to pastel". `--bark` itself is unchanged and still used where a panel isn't a "card" (attempt-history chips, `/dev/apes`).
 >
 > **v0.6 changelog:** the ape portraits were redrawn as a layered retro-vector cel in natural gorilla colors. They no longer borrow the page's green tokens by value; they own a five-token fur/skin/silver palette of their own, which retires the constraint that once pinned `--bark` to the portrait (see §6, "Why the panel green didn't go all the way to pastel"). Shading is flat shadow and highlight masses clipped inside each part, the silhouette is inked by a fattened underlay rather than per-part contours, and two trait tells were added (a shoulder hump for build, greying for elders). A dev-only `/dev/apes` route renders the whole valid trait matrix at 56px and 46px for eyeballing. See §6, Portraits.
@@ -218,7 +220,7 @@ The world is still a primatology field station in montane cloud forest, not a zo
 --card    #2A7744   panel green as of v0.7: the Rung, result card, field notes, archive list
 --rock    #E3C08A   wood-tone: portrait frame background, inert/disabled, hover borders
 --mist    #C9E0BC   secondary text on card panels (rank, traits, "wrong rung" feedback)
---moss    #463A28   secondary text directly on the page ground (eyebrow, rules, nav links, notes)
+--moss    #463A28   secondary text directly on the page ground (eyebrow, rules, nav links, notes) + the selected rung's surface (v0.8)
 --banana  #FFC93C   the single hot accent: correct rung, share glyph
 --blood   #E14E2E   scar mark only (no longer "ranks lower" — feedback is non-directional as of v0.2)
 
@@ -233,7 +235,13 @@ The five `--fur*`/`--skin`/`--silver` tokens are the portrait's and nothing else
 
 `--sky` (`#7FA8C9`, formerly "ranks higher") was removed in v0.2 — it has no remaining use now that feedback is binary.
 
-`--banana` is reserved. It marks correctness and nothing else — not buttons that aren't the primary action, not decoration, not hover states. (The focus ring used to borrow it; that stopped in v0.4 — see below.)
+`--banana` is reserved. It marks correctness and nothing else — not buttons that aren't the primary action, not decoration, not hover states, not selection. (The focus ring used to borrow it; that stopped in v0.4 — see below. The selected rung's border was still borrowing it up to v0.8 — see next.)
+
+### The selected rung (v0.8)
+
+Selection used to be a `--banana` border and a 5px nudge. Two things were wrong with it: it broke the reservation above, and on a ladder where all six rungs are the same green a recoloured 1px edge is genuinely hard to spot — players tap a rung and can't tell they've armed a swap. Selection now changes the **whole surface**: the rung goes `--moss` with a `--rock` ring and a 10px nudge, so it reads as picked up off the ladder rather than outlined on it. `--moss` against `--card` is 2.0:1, which is the jump that does the work.
+
+The colour had to be a *dark* one, and that's the load-bearing part. A rung can be selected while the last guess's feedback is still on the board, and everything already printed on a rung is light — the name (`--paper`), the traits and "wrong" glyph (`--mist`), the "correct" glyph (`--banana`), the portrait's `--rock` disc. On `--moss` those hold 9.7:1, 7.8:1, 7.2:1 and 6.4:1 respectively. The light-surface version was tried first and rejected on exactly this: `--banana` on `--rock` is **1.12:1**, so picking up a rung that had just been marked correct erased its glyph. Any future restyle of this state has to survive the same test — select a rung that is showing `■` and look at it.
 
 ### Why there are two "secondary text" tokens now
 
@@ -384,6 +392,13 @@ The foliage generator seeds a small LCG per element (`900 + i * 17`, trunks at 1
 
 One orchestrated moment: on submit, rungs flip on X with an 80ms stagger, then feedback lands. Selection nudge (5px translate) and focus rings are the only other things that moved before v0.4.
 
+**The swap (v0.8).** Committing a swap moves two cards, and until v0.8 they teleported: the arrangement changed under the player and nothing said which two rungs had traded. The swap is now a FLIP — positions are measured in the click handler, *before* the store reorders `arrangement`, and each moved rung is animated from where it was to where it now is over 260ms on a symmetric ease-in-out. Three details are what make it read as a trade rather than two unrelated slides: the rungs lean 10px out of the column in opposite directions, so they pass *around* each other instead of through; the one climbing the ladder goes in front and swells 4% while the one descending dips behind at 97%; and the rising card wears a drop shadow for the length of the flight, because two identical green cards overlapping are otherwise one indistinct shape. 260ms is deliberately slower than the selection change (`--motion-fast`, which should feel instant under the finger) — the swap is the one move the player actually makes on the board.
+
+Two traps this hit, both worth keeping:
+
+- **`prefers-reduced-motion` is not free here.** The global `*` rule in `global.css` collapses CSS animations and transitions, and everything that moved before v0.8 was one of those. The swap flight is a Web Animations API call, which that rule cannot see, so it has to check the media query itself. Any future motion driven from JS has the same obligation.
+- **Measure with `offsetTop`, not `getBoundingClientRect()`.** The "First" measurement is a layout position, and a bounding rect is neither scroll-independent nor transform-independent — it would fold both the page's scroll offset and any flight still running from an interrupted swap into the delta, and the card would jump.
+
 As of v0.4, the canopy scene (previous section) adds a second, deliberately separate category: slow ambient drift — canopy sway, mote bob — confined entirely to that decorative backdrop and never gated behind a submit or a player action. It's allowed to be continuous specifically because it's decorative background texture, not feedback; nothing about the puzzle's state is communicated through it. All of it, old and new, respects `prefers-reduced-motion` — the global `*` rule in `global.css` collapses every `animation-duration` to near-zero under that query, so the ambient loops didn't need their own opt-out.
 
 ---
@@ -420,7 +435,8 @@ Result state replaces the submit block with headline + grid + copy button. The a
 
 - Rungs are `<button>` elements in DOM order; tab moves down the ladder, Enter selects/swaps.
 - Feedback is never color-only — `■`, `○` glyphs accompany every state.
-- Contrast (recomputed for the v0.4 palette): `--forest` on `--paper` (primary text on the page) is ~12.7:1; `--moss` on `--paper` (secondary text on the page) is ~9.7:1; `--paper` on `--bark` (name text on a rung) is ~5.75:1; `--mist` on `--bark` (secondary text on a rung) is ~4.65:1; `--banana` on `--bark` (the correct-rung glyph) is ~4.3:1. Verify any new pairing at 4.5:1 minimum — `--banana` on `--bark` is the one pairing that runs slightly under that on paper, tolerated only because the ■/○ glyph shape (next bullet) already carries the signal independent of color. Portrait pairings (v0.6): `--fur` on `--rock` (the silhouette on its disc) is ~8.6:1; `--silver` on `--fur` (the saddle on the body) is ~8.5:1; `--silver` on `--rock` is ~1:1, which is why the portrait keeps a `--fur-deep` outline between any silver and the frame.
+- Selection is never color-only either: the selected rung carries `aria-pressed`, its label ends "Selected, choose another ape to swap with", and it is nudged 10px out of the column.
+- Contrast (recomputed for the v0.4 palette): `--forest` on `--paper` (primary text on the page) is ~12.7:1; `--moss` on `--paper` (secondary text on the page) is ~9.7:1; `--paper` on `--bark` (name text on a rung) is ~5.75:1; `--mist` on `--bark` (secondary text on a rung) is ~4.65:1; `--banana` on `--bark` (the correct-rung glyph) is ~4.3:1. Verify any new pairing at 4.5:1 minimum — `--banana` on `--bark` is the one pairing that runs slightly under that on paper, tolerated only because the ■/○ glyph shape (next bullet) already carries the signal independent of color. Portrait pairings (v0.6): `--fur` on `--rock` (the silhouette on its disc) is ~8.6:1; `--silver` on `--fur` (the saddle on the body) is ~8.5:1; `--silver` on `--rock` is ~1:1, which is why the portrait keeps a `--fur-deep` outline between any silver and the frame. Selected-rung pairings (v0.8, all on `--moss`): `--paper` name 9.7:1, `--mist` traits and "wrong" glyph 7.8:1, `--banana` "correct" glyph 7.2:1, `--rock` portrait disc and ring 6.4:1 — the whole point of that surface being dark (see §6).
 - `aria-live="polite"` region announces the result of each submission ("Rung 3 correct, four rungs wrong").
 - Full keyboard play with no pointer.
 - Target size ≥ 44px on every interactive element.
