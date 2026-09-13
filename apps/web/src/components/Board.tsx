@@ -1,4 +1,5 @@
-import { useGameStore } from "../state/useGameStore";
+import { MAX_GUESSES, useGameStore } from "../state/useGameStore";
+import { arraysEqual } from "../lib/arrays";
 import { Ladder } from "./Ladder";
 import { FieldNotes } from "./FieldNotes";
 import { Legend } from "./Legend";
@@ -14,7 +15,9 @@ export function Board({ dateHeader }: BoardProps) {
   const { puzzle, arrangement, selected, history, status, streak, isArchive, revealOrder, select, submit } =
     useGameStore();
 
-  const guessesLeft = 6 - history.length;
+  const guessesLeft = MAX_GUESSES - history.length;
+  const lastArrangement = history[history.length - 1]?.arrangement;
+  const unchanged = !!lastArrangement && arraysEqual(lastArrangement, arrangement);
 
   return (
     <div className={styles.board}>
@@ -47,14 +50,14 @@ export function Board({ dateHeader }: BoardProps) {
 
       {status === "playing" ? (
         <div className={styles.controls}>
-          <button type="button" className={styles.submit} onClick={submit}>
+          <button type="button" className={styles.submit} onClick={submit} disabled={unchanged}>
             Submit ranking
           </button>
           <div className={styles.hintRow}>
             <span>
               {guessesLeft} guess{guessesLeft === 1 ? "" : "es"} left
             </span>
-            <span>Tap an ape to move it</span>
+            <span>{unchanged ? "Change something first" : "Tap an ape to move it"}</span>
           </div>
         </div>
       ) : (
@@ -69,7 +72,7 @@ export function Board({ dateHeader }: BoardProps) {
         />
       )}
 
-      <AttemptsHistory history={history} />
+      <AttemptsHistory history={history} troop={puzzle.troop} />
     </div>
   );
 }

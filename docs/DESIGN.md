@@ -2,8 +2,10 @@
 
 > A daily deduction game. Rank six apes in a gorilla troop from silverback to omega in six guesses.
 
-Status: draft v0.8 · Owner: Oz · Last updated: 2026-09-13
+Status: draft v0.9 · Owner: Oz · Last updated: 2026-09-13
 
+> **v0.9 changelog:** the board now supports deduction instead of fighting it (`docs/REVIEW-2026-09-13.md` Phase 1). Three changes, shipped together because testers hit all three in the same sitting: (1) feedback on a rung now persists until that rung's occupant changes, instead of the whole board's glyphs vanishing on any swap; (2) the attempts history renders each past arrangement (short name + glyph per rung), not just its feedback, since binary feedback is a position-elimination game and elimination is impossible without seeing what was where; (3) resubmitting an arrangement identical to the last graded one is now blocked, both at the button and in the store, since it can't teach the player anything. See §2 and §7.
+>
 > **v0.8 changelog:** picking up a rung and swapping two of them are now visible events. Selection recolours the whole rung — `--moss` surface, `--rock` ring, a 10px nudge — instead of tinting a 1px border `--banana`, which was both easy to miss and a borrow of the one reserved token (§6). A swap animates: the two rungs fly to each other's slots in 260ms, the rising one passing in front with a lift shadow. See §6 (Tokens, and the selected-rung note) and Motion.
 >
 > **v0.7 changelog:** a new `--card` token (`#2A7744`) gives every panel — result card, field notes, archive list, and the Rung itself — a softer, lighter green than `--bark`. `--card` is a blend toward `--mist` chosen to clear >=3:1 contrast against `--banana` (large text/UI components) and >=4.5:1 against `--paper`/`--mist` body text, so it reads lighter without repeating the pastel-panel mistake the v0.4 reversion already documented. Putting `--card` under the Rung meant the "correct rung" glyph (`.exact`, `--banana` on the panel) no longer clears 4.5:1 at its old regular weight/1.1rem size, so it went to 700/1.2rem to qualify as large text at the 3:1 threshold instead — see §6, "Why the panel green didn't go all the way to pastel". `--bark` itself is unchanged and still used where a panel isn't a "card" (attempt-history chips, `/dev/apes`).
@@ -58,6 +60,8 @@ Multiplayer, real-time play, unlimited/endless mode, accounts, leaderboards, mon
 | `wrong` | This ape does not belong on this rung — no information about which way to move it |
 
 Feedback is per-position and total — every rung always returns one of the two. There is no "no information" state.
+
+Feedback persists on a rung until that rung's occupant changes: swapping two rungs clears their glyphs (their graded state no longer matches what's shown) but leaves every other rung's `■`/`○` in place, since the player didn't touch them. This is what makes position-elimination possible across a swap — the alternative (clearing the whole board on any move) forced the player to memorize prior feedback before touching anything.
 
 **Limit.** Six guesses. Win on all-`exact`. Loss reveals the true order.
 
@@ -423,9 +427,13 @@ As of v0.4, the canopy scene (previous section) adds a second, deliberately sepa
 │  [ SUBMIT RANKING ]         │
 │  4 guesses left   tap hint  │
 ├─────────────────────────────┤
-│  ATTEMPTS (compact chips)   │
+│  ATTEMPTS                   │
+│  #1  HESH○ BARA○ TAJI○ ...  │
+│  #2  BARA○ HESH○ TAJI○ ...  │
 └─────────────────────────────┘
 ```
+
+Each attempts row shows the full submitted arrangement, not just its feedback: one cell per rung, a four-letter name clipped from the ape's full name plus its `■`/`○` glyph. Binary feedback makes past arrangements load-bearing — "Kanzi was wrong at rung 3 in guess 2" is only recoverable if guess 2's rung 3 occupant is still on screen — so the history can't be glyph-only chips the way a ternary-feedback game's could be. The submit button (and the keyboard path in the store) refuses to resubmit an arrangement identical to the last graded one, since that guess teaches nothing new.
 
 Result state replaces the submit block with headline + grid + copy button. The archive (`/archive/:number`) reuses the identical board with a date header and no streak effect.
 

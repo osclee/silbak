@@ -72,8 +72,13 @@
   cursor: pointer;
 }
 
-.submit:hover {
+.submit:hover:not(:disabled) {
   filter: brightness(1.08);
+}
+
+.submit:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .hintRow {
