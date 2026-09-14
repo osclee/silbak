@@ -1,7 +1,6 @@
 import { forwardRef } from "react";
-import type { Ape, FeedbackSignal } from "@silbak/engine";
+import type { Ape } from "@silbak/engine";
 import { ApeGlyph } from "./ApeGlyph";
-import { feedbackGlyph, feedbackLabel } from "../lib/feedback";
 import { formatSilver } from "../lib/traits";
 import styles from "./Rung.module.css";
 
@@ -9,7 +8,6 @@ interface RungProps {
   index: number;
   total: number;
   ape: Ape;
-  feedback?: FeedbackSignal;
   selected: boolean;
   disabled?: boolean;
   onSelect: () => void;
@@ -32,19 +30,14 @@ function rankBadge(index: number, total: number): string {
 // The ladder measures and animates these buttons directly (Ladder.tsx's FLIP
 // swap), which is why the DOM node is forwarded rather than kept private.
 export const Rung = forwardRef<HTMLButtonElement, RungProps>(function Rung(
-  { index, total, ape, feedback, selected, disabled, onSelect },
+  { index, total, ape, selected, disabled, onSelect },
   ref,
 ) {
   const posName = positionName(index, total);
   const ariaLabel = [
     `Rung ${index + 1}${posName ? `, ${posName}` : ""}: ${ape.name}`,
     `${ape.age}, ${ape.build} build, ${formatSilver(ape.silver)}${ape.scar ? ", scarred" : ""}`,
-    // feedbackLabel() carries its own full stop, which the join would double up
-    // now that a clause can follow it.
-    feedback ? feedbackLabel(feedback).replace(/\.$/, "") : "",
-    // Additive, not an alternative to the feedback clause: a rung can be picked
-    // up while last guess's feedback is still on the board, and "selected" is
-    // the half a screen-reader user can't see.
+    // "Selected" is the half a screen-reader user can't see.
     selected ? "Selected, choose another ape to swap with" : "",
   ]
     .filter(Boolean)
@@ -72,9 +65,6 @@ export const Rung = forwardRef<HTMLButtonElement, RungProps>(function Rung(
           {ape.age} · {ape.build} · {formatSilver(ape.silver)}
           {ape.scar ? " · scarred" : ""}
         </span>
-      </span>
-      <span className={`${styles.feedback} ${feedback ? styles[feedback] : ""}`} aria-hidden="true">
-        {feedback ? feedbackGlyph(feedback) : ""}
       </span>
     </button>
   );

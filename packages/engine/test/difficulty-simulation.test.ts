@@ -15,23 +15,27 @@ import { hashStr, mulberry32 } from "../src/rng";
  * production troop/clue/selection pipeline, and solves each with an adaptive
  * minimax solver.
  *
- * Two feedback variants are compared on the EXACT SAME generated puzzles
- * (paired comparison, same seeds). NEITHER imports production grade.ts —
- * both are defined locally, independent of whatever grade() currently does,
- * so this comparison stays meaningful even after grade.ts changes (as it
- * did: production grade() started directional, and became the "binary"
- * variant below as a direct result of what this file found):
- *   1. "directional" (gradeDirectional) — exact/up/down per rung, matching
- *      grade.ts's ORIGINAL (v1, 5-ape, pre-binary-switch) behavior. Kept as
- *      a fixed historical baseline.
- *   2. "binary" (gradeBinary) — exact/wrong per rung, matching grade.ts's
- *      CURRENT behavior. Duplicated here rather than imported so this file
- *      keeps working as a real comparison tool if grade.ts changes again.
+ * Three feedback variants are compared on the EXACT SAME generated puzzles
+ * (paired comparison, same seeds). NONE imports production grade.ts — all
+ * are defined locally, independent of whatever grade() currently does, so
+ * this comparison stays meaningful every time grade.ts changes (and it has,
+ * twice, each time as a direct result of what this file found):
+ *   1. "directional" (gradeDirectional) — exact/up/down per rung, grade.ts's
+ *      ORIGINAL (v1, 5-ape) behavior. Fixed historical baseline.
+ *   2. "binary" (gradeBinary) — exact/wrong per rung, grade.ts's v2
+ *      behavior. Fixed historical baseline.
+ *   3. "count" (gradeCount) — a single "N on their true rung" per guess,
+ *      grade.ts's CURRENT (v3) behavior. Duplicated here rather than
+ *      imported so this file keeps working as a comparison tool if grade.ts
+ *      changes again. docs/DIFFICULTY-2026-09-13.md §2.1 is the measurement
+ *      that motivated it: binary feedback hands a solver ~4 bits a guess
+ *      against a puzzle that needs ~7, so two guesses were nearly always
+ *      enough whatever the clue bands did.
  *
- * TARGETS spans the v2 (6-ape, 720-permutation) engine's achievable range.
- * Structural ceiling is 504 (720 - 120 - 120 + 24, two weak `neg` clues via
- * inclusion-exclusion — see select.ts's BANDS comment); selectClues reliably
- * hits exactly 504 at that target and throws above it.
+ * TARGETS spans the v3 (6-ape, 720-permutation) engine's achievable range.
+ * Above ~400 the relational-clue rule (select.ts) makes targets hard to hit
+ * exactly — an `order`/`half` clue alone leaves 360 — so selectClues may
+ * throw at the top of the list; those are counted as infeasible below.
  *
  * PERFORMANCE NOTE: the minimax step restricts candidate GUESSES to
  * `remaining` itself, not the full permutation universe. At N=5/120 the
@@ -50,7 +54,7 @@ import { hashStr, mulberry32 } from "../src/rng";
 
 const ALL_PERMS = allPermutations() as ApeId[][];
 
-const TARGETS = [2, 4, 8, 14, 24, 40, 65, 100, 150, 210, 280, 360, 440, 490, 504];
+const TARGETS = [2, 4, 8, 14, 24, 40, 65, 100, 150, 210, 280, 330, 360, 400];
 const TRIALS_PER_TARGET = 20;
 const MAX_GUESSES = 12;
 const REALISTIC_WIN_CAP = 6; // the real game's guess limit
@@ -66,10 +70,21 @@ const gradeDirectional: FeedbackFn = (guess, order) => {
   });
 };
 
-/** Current behavior: exact/wrong per rung (mirrors grade.ts as of this writing). */
+/** Historical baseline: exact/wrong per rung (grade.ts's v2 behavior). */
 const gradeBinary: FeedbackFn = (guess, order) => {
   const truth = truthMap(order as ApeId[]);
   return guess.map((apeId, i) => (truth[apeId] === i ? "exact" : "wrong"));
+};
+
+/** Current behavior: how many rungs are exact, nothing about which (mirrors
+ * grade.ts as of this writing). */
+const gradeCount: FeedbackFn = (guess, order) => {
+  const truth = truthMap(order as ApeId[]);
+  let exact = 0;
+  guess.forEach((apeId, i) => {
+    if (truth[apeId] === i) exact++;
+  });
+  return [String(exact)];
 };
 
 interface TrialResult {
@@ -148,7 +163,9 @@ function solve(
 
     guesses++;
     const fb = feedbackFn(guess, trueOrder);
-    if (fb.every((f) => f === "exact")) {
+    // "Solved" is whatever feedback a guess earns against itself — true for
+    // every variant, including ones that don't say "exact" per rung.
+    if (feedbackKey(fb) === feedbackKey(feedbackFn(guess, guess))) {
       return { guesses, capped: false };
     }
     const fbStr = feedbackKey(fb);
@@ -308,37 +325,44 @@ function printTable(title: string, buckets: Bucket[]) {
   console.log(sep + "\n");
 }
 
-function printComparison(directional: Bucket[], binary: Bucket[]) {
+function printComparison(directional: Bucket[], binary: Bucket[], count: Bucket[]) {
   const bySpaceDir = new Map(directional.map((b) => [b.spaceLabel, b]));
   const bySpaceBin = new Map(binary.map((b) => [b.spaceLabel, b]));
-  const spaces = [...new Set([...bySpaceDir.keys(), ...bySpaceBin.keys()])].sort((a, b) => Number(a) - Number(b));
+  const bySpaceCnt = new Map(count.map((b) => [b.spaceLabel, b]));
+  const spaces = [...new Set([...bySpaceDir.keys(), ...bySpaceBin.keys(), ...bySpaceCnt.keys()])].sort(
+    (a, b) => Number(a) - Number(b),
+  );
 
   const header = [
     "space".padEnd(7),
     "dir-avg".padStart(8),
     "bin-avg".padStart(8),
-    "delta".padStart(7),
-    "bin-win<=6".padStart(11),
-    "bin-%7+".padStart(8),
+    "cnt-avg".padStart(8),
+    "cnt-bin".padStart(8),
+    "cnt-win<=6".padStart(11),
+    "cnt-%7+".padStart(8),
   ].join(" | ");
   const sep = "-".repeat(header.length);
-  console.log("\n=== Directional (v1, historical) vs Binary (v2, current) — paired comparison ===");
+  console.log("\n=== Directional (v1) vs Binary (v2) vs Count (v3, current) — paired comparison ===");
   console.log(header);
   console.log(sep);
   for (const space of spaces) {
     const d = bySpaceDir.get(space);
     const b = bySpaceBin.get(space);
+    const c = bySpaceCnt.get(space);
     const dAvg = d ? d.avg.toFixed(2) : "  -";
     const bAvg = b ? b.avg.toFixed(2) : "  -";
-    const delta = d && b ? (b.avg - d.avg).toFixed(2) : "  -";
-    const win6 = b ? b.pctWithin6.toFixed(0) + "%" : "-";
-    const p7 = b ? b.pct7plus.toFixed(0) + "%" : "-";
+    const cAvg = c ? c.avg.toFixed(2) : "  -";
+    const delta = c && b ? (c.avg - b.avg).toFixed(2) : "  -";
+    const win6 = c ? c.pctWithin6.toFixed(0) + "%" : "-";
+    const p7 = c ? c.pct7plus.toFixed(0) + "%" : "-";
     console.log(
       [
         space.padEnd(7),
         dAvg.padStart(8),
         bAvg.padStart(8),
-        delta.padStart(7),
+        cAvg.padStart(8),
+        delta.padStart(8),
         win6.padStart(11),
         p7.padStart(8),
       ].join(" | "),
@@ -349,7 +373,7 @@ function printComparison(directional: Bucket[], binary: Bucket[]) {
 
 describe("difficulty simulation (standalone analysis, not a correctness assertion)", () => {
   it(
-    "compares directional (v1, historical) vs binary (v2, current) feedback on identical 6-ape puzzles",
+    "compares directional (v1) vs binary (v2) vs count (v3, current) feedback on identical 6-ape puzzles",
     () => {
       const { instances, infeasible } = buildInstances();
 
@@ -364,13 +388,16 @@ describe("difficulty simulation (standalone analysis, not a correctness assertio
 
       const directionalResults = solveInstances(instances, gradeDirectional, MAX_GUESSES);
       const binaryResults = solveInstances(instances, gradeBinary, MAX_GUESSES);
+      const countResults = solveInstances(instances, gradeCount, MAX_GUESSES);
 
       const directionalBuckets = summarize(directionalResults);
       const binaryBuckets = summarize(binaryResults);
+      const countBuckets = summarize(countResults);
 
       printTable("Directional feedback (v1 historical baseline, exact/up/down)", directionalBuckets);
-      printTable("Binary feedback (v2 current, exact/wrong)", binaryBuckets);
-      printComparison(directionalBuckets, binaryBuckets);
+      printTable("Binary feedback (v2 historical baseline, exact/wrong)", binaryBuckets);
+      printTable("Count feedback (v3 current, N on their true rung)", countBuckets);
+      printComparison(directionalBuckets, binaryBuckets, countBuckets);
 
       const dirUnsolved = directionalResults.some((r) => r.capped);
       if (dirUnsolved) {
@@ -379,6 +406,10 @@ describe("difficulty simulation (standalone analysis, not a correctness assertio
       const binUnsolved = binaryResults.some((r) => r.capped);
       if (binUnsolved) {
         console.warn(`WARNING: some BINARY trials hit the ${MAX_GUESSES}-guess cap without solving — investigate.`);
+      }
+      const cntUnsolved = countResults.some((r) => r.capped);
+      if (cntUnsolved) {
+        console.warn(`WARNING: some COUNT trials hit the ${MAX_GUESSES}-guess cap without solving — investigate.`);
       }
 
       if (instances.length === 0) {

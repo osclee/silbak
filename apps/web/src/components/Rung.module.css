@@ -1,6 +1,6 @@
 .rung {
   display: grid;
-  grid-template-columns: 12ch auto 1fr auto;
+  grid-template-columns: 12ch auto 1fr;
   align-items: center;
   gap: var(--space-3);
   width: 100%;
@@ -32,14 +32,15 @@
    1. It can't be --banana (the old border colour). DESIGN.md §6 reserves
       --banana for correctness; selection was borrowing it exactly the way the
       focus ring did before v0.4.
-   2. It has to stay dark. A rung can be selected while last guess's feedback
-      is still showing, and every mark already printed on a rung is light:
-      against --moss the --paper name holds 9.7:1, --mist traits and the
-      "wrong" glyph 7.8:1, the --banana "correct" glyph 7.2:1, and the --rock
-      portrait disc 6.4:1. The light-surface version of this (--rock) was tried
-      first and rejected — --banana on --rock is 1.12:1, so picking up a rung
-      that had been marked correct erased its glyph. --moss against --card, the
-      surface it replaces, is 2.0:1, which is the jump doing the work here. */
+   2. It has to stay dark. Everything printed on a rung is light: against
+      --moss the --paper name holds 9.7:1, --mist traits 7.8:1, and the
+      --rock portrait disc 6.4:1. The light-surface version of this (--rock)
+      was tried first and rejected — back when feedback was per rung,
+      --banana on --rock (1.12:1) erased a rung's "correct" glyph the moment
+      it was picked up. Feedback is per guess now (v0.11), but the rule
+      survives: anything on a rung is light, so the selected surface stays
+      dark. --moss against --card, the surface it replaces, is 2.0:1, which
+      is the jump doing the work here. */
 .selected {
   background: var(--moss);
   border-color: var(--rock);
@@ -100,19 +101,4 @@
   color: var(--mist);
   white-space: normal;
   overflow-wrap: break-word;
-}
-
-.feedback {
-  font-size: 1.2rem;
-  font-weight: 700;
-  width: 1.5rem;
-  text-align: center;
-}
-
-.exact {
-  color: var(--banana);
-}
-
-.wrong {
-  color: var(--mist);
 }

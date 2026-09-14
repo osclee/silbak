@@ -64,8 +64,38 @@
   padding: var(--space-2);
 }
 
-.streak {
+.par {
+  margin: 0;
   font-family: var(--font-mono);
   font-size: 0.85rem;
   color: var(--mist);
+}
+
+.medal {
+  font-size: 1.1rem;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, var(--mist) 30%, transparent);
+}
+
+.stats dt {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mist);
+}
+
+.stats dd {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--paper);
 }

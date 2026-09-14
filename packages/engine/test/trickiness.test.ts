@@ -7,9 +7,11 @@ import type { ApeId } from "../src/troop";
 import { EPOCH } from "../src/version";
 import { dateRange } from "./dates";
 
-// Mirrors select.ts's DOMINANCE_MARGIN — kept independent (not imported) so this
-// test verifies observed behavior, not just that the constant exists.
+// Mirrors select.ts's DOMINANCE_MARGIN / DOMINANCE_CAP — kept independent (not
+// imported) so this test verifies observed behavior, not just that the
+// constants exist.
 const DOMINANCE_MARGIN = 1.6;
+const DOMINANCE_CAP = 350;
 
 function selectedCandidates(clues: { kind: string; text: string }[], candidates: ReturnType<typeof candidateClues>) {
   return clues.map((emitted) => candidates.find((c) => c.kind === emitted.kind && c.text === emitted.text)!);
@@ -31,18 +33,17 @@ describe("clue-set trickiness (select.ts — no single dominant clue)", () => {
       const candidates = candidateClues(p.solution.order, p.troop);
       const selected = selectedCandidates(p.clues, candidates);
 
-      const noDominantClue = selected.every((c) => spaceOf([c], allPerms) > ceiling * DOMINANCE_MARGIN);
+      const threshold = Math.min(ceiling * DOMINANCE_MARGIN, DOMINANCE_CAP);
+      const noDominantClue = selected.every((c) => spaceOf([c], allPerms) > threshold);
       if (noDominantClue) compliant++;
     }
 
-    // Saturday's ceiling (504) is deliberately in select.ts's ">=375" zone,
-    // where even the strongest solo clue (neg, 600/720 survivors) can't
-    // clear ceiling*DOMINANCE_MARGIN (504*1.6=806.4 > 720 is impossible) —
-    // the non-dominant pool structurally empties and every Saturday falls
-    // back to the full candidate pool by design (see select.ts's BANDS
-    // comment). That's exactly 1-in-7 days exempt from this specific check;
-    // every other day should still be 100% compliant.
-    expect(compliant / days.length).toBeGreaterThanOrEqual(0.8);
+    // With the threshold capped at 350 (select.ts DOMINANCE_CAP), the
+    // primary pool never empties, so every weekday should land on it —
+    // measured at 100% over 364 days when the v3 bands were set. Kept at
+    // 95% rather than 100% so a rare full-pool fallback is a warning, not
+    // a build break.
+    expect(compliant / days.length).toBeGreaterThanOrEqual(0.95);
   });
 
   it("most days are irreducible — no proper subset of the clues already reaches band", () => {

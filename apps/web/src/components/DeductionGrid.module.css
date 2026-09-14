@@ -1,0 +1,91 @@
+.ledger {
+  padding: var(--space-4);
+  background: var(--card);
+  border-radius: var(--radius);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mist);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 4.5ch repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+/* Rows are semantic only; the cells lay out on the shared grid. */
+.row {
+  display: contents;
+}
+
+.corner,
+.colHead,
+.rowHead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--mist);
+}
+
+.corner {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+}
+
+.rowHead {
+  justify-content: flex-start;
+  font-size: 0.62rem;
+}
+
+.cell {
+  min-height: 44px;
+  padding: 0;
+  background: var(--bark);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
+}
+
+.cell:hover:not(:disabled) {
+  border-color: var(--rock);
+}
+
+.cell:disabled {
+  cursor: default;
+}
+
+/* Ruled out: the mark stays muted — this is bookkeeping, not a result. */
+.no {
+  color: var(--mist);
+}
+
+/* Confirmed borrows --banana deliberately: a ✓ is the player asserting
+   "correct", which is the one meaning that token is reserved for. */
+.yes {
+  color: var(--banana);
+}
+
+.footnote {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--mist);
+}

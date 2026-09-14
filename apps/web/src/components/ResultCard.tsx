@@ -1,32 +1,47 @@
 import { useRef, useState } from "react";
+import { MAX_GUESSES, TROOP_SIZE } from "@silbak/engine";
 import type { Ape, ApeId } from "@silbak/engine";
 import type { HistoryEntry, GameStatus } from "../state/useGameStore";
 import { buildShareText, shareOrCopy } from "../lib/share";
+import { loadPersisted, todayKey } from "../lib/storage";
+import { computeStats, describeVsPar, formatVsPar } from "../lib/stats";
 import styles from "./ResultCard.module.css";
 
 interface ResultCardProps {
   status: Exclude<GameStatus, "playing">;
   history: HistoryEntry[];
   puzzleNumber: number;
+  par: number;
   troop: Ape[];
   revealOrder: ApeId[];
   streak: { count: number; max: number };
   isArchive: boolean;
 }
 
-export function ResultCard({ status, history, puzzleNumber, troop, revealOrder, streak, isArchive }: ResultCardProps) {
+export function ResultCard({
+  status,
+  history,
+  puzzleNumber,
+  par,
+  troop,
+  revealOrder,
+  streak,
+  isArchive,
+}: ResultCardProps) {
   const [label, setLabel] = useState("Copy result");
   const [failedText, setFailedText] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const solved = status === "won";
+  const cleanRead = solved && history.length === 1;
   const grid = history
-    .map((entry) => entry.feedback.map((f) => (f === "exact" ? "🍌" : "🪨")).join(""))
+    .map((entry) => "🍌".repeat(entry.feedback.exact) + "🪨".repeat(TROOP_SIZE - entry.feedback.exact))
     .join("\n");
   const shareText = buildShareText(
     history.map((h) => h.feedback),
     solved,
     puzzleNumber,
+    par,
   );
 
   const handleCopy = async () => {
@@ -43,12 +58,29 @@ export function ResultCard({ status, history, puzzleNumber, troop, revealOrder, 
   };
 
   const apesById = new Map(troop.map((a) => [a.id, a]));
+  // Read at render, not subscribed: the terminal submit that mounted this
+  // card has already written today's entry, and nothing else changes it.
+  const stats = isArchive ? null : computeStats(loadPersisted().played, todayKey());
 
   return (
     <div className={styles.card} aria-live="polite">
       <h2 className={`${styles.headline} ${solved ? styles.won : ""}`}>
-        {solved ? `Solved in ${history.length}/6` : "The troop settled without you"}
+        {solved ? `Solved in ${history.length}/${MAX_GUESSES}` : "The troop settled without you"}
       </h2>
+      <p className={styles.par}>
+        {cleanRead ? (
+          <>
+            <span className={styles.medal} aria-hidden="true">
+              🥇
+            </span>{" "}
+            Clean read — one guess, par {par}
+          </>
+        ) : solved ? (
+          `${describeVsPar(history.length - par)} · par ${par}`
+        ) : (
+          `Unsolved · par ${par}`
+        )}
+      </p>
       <div className={styles.grid} aria-hidden="true">
         {grid}
       </div>
@@ -62,7 +94,30 @@ export function ResultCard({ status, history, puzzleNumber, troop, revealOrder, 
           ))}
         </div>
       )}
-      {!isArchive && streak.count > 0 && <div className={styles.streak}>🔥 {streak.count} day streak</div>}
+      {stats && (
+        <dl className={styles.stats}>
+          <div>
+            <dt>Played</dt>
+            <dd>{stats.played}</dd>
+          </div>
+          <div>
+            <dt>Won</dt>
+            <dd>{stats.played ? Math.round((100 * stats.won) / stats.played) : 0}%</dd>
+          </div>
+          <div>
+            <dt>Streak</dt>
+            <dd>{streak.count}</dd>
+          </div>
+          <div>
+            <dt>Best</dt>
+            <dd>{streak.max}</dd>
+          </div>
+          <div>
+            <dt>vs par · {stats.monthLabel}</dt>
+            <dd>{formatVsPar(stats.vsParMonth)}</dd>
+          </div>
+        </dl>
+      )}
       <button type="button" className={styles.button} onClick={handleCopy}>
         {label}
       </button>

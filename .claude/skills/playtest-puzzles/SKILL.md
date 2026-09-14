@@ -115,5 +115,6 @@ Use these to judge whether a new run's numbers look normal or like something reg
 |---|---|---|---|---|---|
 | 5-ape, binary feedback | 75 | 1.87 | 2 | 4 (1.3%) | 0 |
 | 6-ape, binary feedback | 75 | 2.17 | 2 | 4 (2.7%) | 0 |
+| 6-ape, count-only feedback (v3) | 38 (run stopped early) | 4.05 | 4 | 6 | 2 (5.3%) |
 
-Zero losses in both. If a new run shows meaningfully higher losses or a much higher average, that's worth investigating before trusting the rest of the report — either a real difficulty regression or something wrong with how the agents played (e.g. accidentally not blind).
+Zero losses in the first two; the v3 row is the new normal — count-only feedback (`docs/DIFFICULTY-2026-09-13.md`) is meant to produce a Wordle-shaped distribution with rare losses, and 66% of puzzles needing 4+ guesses is expected, not a regression. Two lessons from the v3 run: tell agents explicitly to keep a written ape × rung ledger (the real UI has one; without it agents drift toward the trait-ignoring bound), and to **stop at six** — one agent kept guessing to nine. Ask for the per-puzzle notes in the final report only; anything written mid-run is lost if the run is stopped. If a new run shows meaningfully higher losses or a much higher average, that's worth investigating before trusting the rest of the report — either a real difficulty regression or something wrong with how the agents played (e.g. accidentally not blind).

@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
 import type { Ape, ApeId } from "@silbak/engine";
-import type { HistoryEntry } from "../state/useGameStore";
 import { Rung } from "./Rung";
 import styles from "./Ladder.module.css";
 // The swap is animated imperatively (see the FLIP below), so the one class it
@@ -11,7 +10,6 @@ interface LadderProps {
   troop: Ape[];
   arrangement: ApeId[];
   selected: number | null;
-  lastEntry?: HistoryEntry;
   playing: boolean;
   onSelect: (index: number) => void;
 }
@@ -38,7 +36,7 @@ function motionAllowed(): boolean {
   return !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function Ladder({ troop, arrangement, selected, lastEntry, playing, onSelect }: LadderProps) {
+export function Ladder({ troop, arrangement, selected, playing, onSelect }: LadderProps) {
   const apesById = new Map(troop.map((a) => [a.id, a]));
 
   const nodes = useRef(new Map<ApeId, HTMLButtonElement>());
@@ -108,7 +106,7 @@ export function Ladder({ troop, arrangement, selected, lastEntry, playing, onSel
   });
 
   return (
-    <div className={styles.ladder} role="list" aria-label="Ape ladder, silverback at top">
+    <div className={styles.ladder} aria-label="Ape ladder, silverback at top">
       {arrangement.map((apeId, i) => {
         const ape = apesById.get(apeId);
         if (!ape) return null;
@@ -122,7 +120,6 @@ export function Ladder({ troop, arrangement, selected, lastEntry, playing, onSel
             index={i}
             total={arrangement.length}
             ape={ape}
-            feedback={lastEntry && lastEntry.arrangement[i] === apeId ? lastEntry.feedback[i] : undefined}
             selected={selected === i}
             disabled={!playing}
             onSelect={() => handleSelect(i)}

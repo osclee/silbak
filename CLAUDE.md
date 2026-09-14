@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Silbak is a Wordle-style daily deduction game: rank a troop of gorillas from silverback (most dominant) to omega (least) using field-note clues and visible traits, then get per-position feedback after each guess. Design spec lives in `docs/DESIGN.md` — read it before making any change to generation logic, feedback semantics, or visual tokens; it documents *why* things are the way they are, not just what they are, and should be kept in sync when those decisions change.
+Silbak is a Wordle-style daily deduction game: rank a troop of gorillas from silverback (most dominant) to omega (least) using field-note clues and visible traits, then after each guess learn how many apes stand on their true rung (a count, never which ones). Design spec lives in `docs/DESIGN.md` — read it before making any change to generation logic, feedback semantics, or visual tokens; it documents *why* things are the way they are, not just what they are, and should be kept in sync when those decisions change.
 
 `docs/REVIEW-2026-09-13.md` is the current executive review and phased implementation plan (Part B). When asked to improve the game without a more specific brief, work its phases in order, and update its findings if the code has moved on since it was written. To run a fresh review (or re-check progress against that plan), use the `executive-review` skill (`.claude/skills/executive-review/SKILL.md`) — it encodes the three-lens workflow (browser play-through + blind playtest + code audits) and the report/plan format.
 
@@ -55,12 +55,15 @@ pnpm workspaces + Turborepo, two packages:
 dateKey → hash(`silbak::v{ENGINE_VERSION}::{dateKey}`) → mulberry32 seed
   → buildTroop(rng)              [troop.ts]   → apes with gated random traits
   → computeTrueOrder(troop, rng) [troop.ts]   → true dominance ranking
-  → candidateClues(order, troop) [clues.ts]   → every true clue about this ranking
+  → candidateClues(order, troop) [clues.ts]   → every true clue about this ranking:
+                                                 named clues + trait-quantified
+                                                 clues over classes.ts's trait classes
   → selectClues(candidates, band)[select.ts]  → 2-4 clues that narrow the space
-                                                 into that weekday's target range
+                                                 into that weekday's target range,
+                                                 at least one of them relational
 ```
 
-`ENGINE_VERSION` (in `version.ts`) is embedded in the seed — bumping it changes every puzzle for every date. It's currently 2 (bumped when troop size went from 5 to 6). Pre-launch, bumping it freely on generation-logic changes is fine; once there are live players, `docs/DESIGN.md`'s versioning note applies (never edit a shipped version's logic in place — add a new version behind a date cutover instead).
+`ENGINE_VERSION` (in `version.ts`) is embedded in the seed — bumping it changes every puzzle for every date. It's currently 3 (bumped for count-only feedback, the trait-quantified clue family, and the weekend band rebuild — `docs/DIFFICULTY-2026-09-13.md`; 2 was the 5→6 ape change). Pre-launch, bumping it freely on generation-logic changes is fine; once there are live players, `docs/DESIGN.md`'s versioning note applies (never edit a shipped version's logic in place — add a new version behind a date cutover instead).
 
 ### Solution never leaves the engine boundary carelessly
 
@@ -70,14 +73,15 @@ dateKey → hash(`silbak::v{ENGINE_VERSION}::{dateKey}`) → mulberry32 seed
 
 Three constants govern how hard a puzzle is, and none of them were arrived at analytically — they were swept and retuned against real generated output until measured behavior matched a target:
 - `NOISE` (`troop.ts`) — how often the trait-obvious favorite is *not* actually the true silverback. Tuned so a "read the traits" guess is right roughly 55-65% of the time.
-- `DOMINANCE_MARGIN` (`select.ts`) — excludes any candidate clue that would, on its own, nearly solve the puzzle; forces the generator to combine clues rather than lean on one strong one.
+- `DOMINANCE_MARGIN` / `DOMINANCE_CAP` (`select.ts`) — excludes any candidate clue that would, on its own, nearly solve the puzzle; forces the generator to combine clues rather than lean on one strong one. The cap keeps `order`/`half` eligible at weekend ceilings, without which the weekend pool collapses to `neg`.
 - `BANDS` (`select.ts`) — per-weekday target range for how many permutations survive the chosen clues.
+- `PAR` (`select.ts`) — expected guesses per weekday, shown on the share line; set from the blind-playtest medians, not the solver.
 
 If any of these change, re-run the relevant sweep rather than guessing at a new value — `packages/engine/test/model-tuning.test.ts` and `test/trickiness.test.ts` encode the target invariants, and `test/difficulty-simulation.test.ts` is a standalone (non-assertive) simulation harness for sweeping a constant across a range and observing guesses-to-solve. `select.ts`'s `BANDS` comment documents a real bug this surfaced: `DOMINANCE_MARGIN` creates hard edges in which clue kinds are eligible at a given ceiling, and a band placed entirely inside one of those edge zones can land on the *same* surviving-space value every single day even though the clues differ — bands must be checked against that lattice, not just against the invariant tests passing.
 
 ### Test files double as tuning tools, not just correctness gates
 
-`determinism.test.ts` guards a golden snapshot (regenerate it deliberately — `rm -rf test/__snapshots__` — when a generation-logic change is intentional, never to silence an assertion you don't understand). `invariants.test.ts`, `model-tuning.test.ts`, and `trickiness.test.ts` assert the properties described above. `difficulty-simulation.test.ts` prints tables via `console.log` and intentionally asserts nothing meaningful — it exists to be read, not to pass or fail. If you extend it, keep candidate guesses restricted to the remaining-consistent set rather than the full permutation universe; the full-universe search is what caused a real multi-minute stall once the troop size grew.
+`determinism.test.ts` guards a golden snapshot (regenerate it deliberately — `rm -rf test/__snapshots__` — when a generation-logic change is intentional, never to silence an assertion you don't understand). `invariants.test.ts`, `model-tuning.test.ts`, and `trickiness.test.ts` assert the properties described above; `diversity.test.ts` asserts that no weekday collapses to a single space/kind-signature and that every puzzle carries a relational clue — the test that would have caught the v2 weekend bug. `difficulty-simulation.test.ts` prints tables via `console.log` and intentionally asserts nothing meaningful — it exists to be read, not to pass or fail. If you extend it, keep candidate guesses restricted to the remaining-consistent set rather than the full permutation universe; the full-universe search is what caused a real multi-minute stall once the troop size grew.
 
 ### Web app structure
 

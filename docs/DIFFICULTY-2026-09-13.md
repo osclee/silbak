@@ -3,7 +3,7 @@
 Date: 2026-09-13 · Author: Claude (Fable 5.1) · Owner: Oz
 Engine version measured: `ENGINE_VERSION = 2` (6 apes, binary per-rung feedback, current `BANDS`)
 
-> **How to use this document.** Part 1 measures *why* the game is easy and repetitive, with numbers re-runnable from the appendix. Part 2 measures every candidate lever on the same 730 generated puzzles so they can be compared like for like. Part 3 is the recommendation. Part 4 lists the ideas the numbers ruled out, so they don't get re-proposed without new evidence. It is a proposal, not a plan of record — nothing here is implemented. If adopted, it supersedes `docs/REVIEW-2026-09-13.md` Phase 3 (weekend generation), which it subsumes.
+> **How to use this document.** Part 1 measures *why* the game is easy and repetitive, with numbers re-runnable from the appendix. Part 2 measures every candidate lever on the same 730 generated puzzles so they can be compared like for like. Part 3 is the recommendation. Part 4 lists the ideas the numbers ruled out, so they don't get re-proposed without new evidence. It was adopted and shipped as engine v3 on 2026-09-13 (`DESIGN.md` v0.11, all of Part 3), superseding `docs/REVIEW-2026-09-13.md` Phase 3, which it subsumes. Two things were learned in the doing that Part 3 didn't anticipate: the weekend band re-sweep needed a cap on the dominance threshold (`DOMINANCE_CAP` in `select.ts`) before `order`/`half` could appear at all above ceiling 225, and Saturday's band had to sit below 360 because the relational-clue rule makes a floor above an `order` clue's solo strength unreachable. The playtest gate result is recorded in `DESIGN.md` §9.6.
 
 ---
 

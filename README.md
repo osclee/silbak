@@ -1,6 +1,6 @@
 # Silbak
 
-A Wordle-style daily deduction game: rank a troop of six gorillas from silverback (most dominant) to omega (least dominant) using field-note clues and visible traits, then get per-position feedback after each guess. Same puzzle for everyone, once a day, six guesses, no account required.
+A Wordle-style daily deduction game: rank a troop of six gorillas from silverback (most dominant) to omega (least dominant) using field-note clues and visible traits, then after each guess learn how many apes stand on their true rung — a count, never which ones. Same puzzle for everyone, once a day, six guesses, no account required.
 
 The full design rationale — game rules, the dominance model, puzzle-generation contract, visual system, and accessibility requirements — lives in [`docs/DESIGN.md`](docs/DESIGN.md). Read it before touching generation logic, feedback semantics, or visual tokens.
 
@@ -64,10 +64,12 @@ dateKey → hash(`silbak::v{ENGINE_VERSION}::{dateKey}`) → mulberry32 seed
   → buildTroop(rng)              [troop.ts]   → apes with gated random traits
   → computeTrueOrder(troop, rng) [troop.ts]   → true dominance ranking
   → candidateClues(order, troop) [clues.ts]   → every true clue about this ranking
+                                                 (named + trait-quantified, classes.ts)
   → selectClues(candidates, band)[select.ts]  → 2-4 clues that narrow the space
-                                                 into that weekday's target range
+                                                 into that weekday's target range,
+                                                 at least one of them relational
 ```
 
 `generate()` returns the solution alongside the puzzle; `stripSolution()` removes it. On the web side, `apps/web/src/lib/puzzle.ts` is the only file allowed to call `generate()` directly.
 
-Difficulty is governed by three constants tuned empirically against real generated output, not derived analytically: `NOISE` (`troop.ts`), `DOMINANCE_MARGIN` and `BANDS` (`select.ts`). See `docs/DESIGN.md` and the tests in `packages/engine/test/` (`model-tuning.test.ts`, `trickiness.test.ts`, `difficulty-simulation.test.ts`) before changing any of them.
+Difficulty is governed by three constants tuned empirically against real generated output, not derived analytically: `NOISE` (`troop.ts`), `DOMINANCE_MARGIN`/`DOMINANCE_CAP`, `BANDS` and `PAR` (`select.ts`). See `docs/DESIGN.md` and the tests in `packages/engine/test/` (`model-tuning.test.ts`, `trickiness.test.ts`, `difficulty-simulation.test.ts`) before changing any of them.

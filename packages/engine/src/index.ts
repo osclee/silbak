@@ -3,18 +3,18 @@ import type { Ape, ApeId } from "./troop";
 import { buildTroop, computeTrueOrder, TROOP_SIZE } from "./troop";
 import { candidateClues } from "./clues";
 import type { Clue } from "./clues";
-import { selectClues, bandForDateKey } from "./select";
+import { selectClues, bandForDateKey, parForDateKey } from "./select";
 import { allPermutations } from "./permutations";
 import { ENGINE_VERSION, EPOCH, puzzleNumber } from "./version";
-import type { Solution, FeedbackSignal } from "./grade";
-import { grade, isSolved, shareGrid } from "./grade";
+import type { Solution } from "./grade";
+import { grade, isSolved, shareGrid, MAX_GUESSES } from "./grade";
 
-export { ENGINE_VERSION, EPOCH, puzzleNumber, grade, isSolved, shareGrid, TROOP_SIZE };
+export { ENGINE_VERSION, EPOCH, puzzleNumber, grade, isSolved, shareGrid, TROOP_SIZE, MAX_GUESSES };
 export type { Ape, ApeId, Age, Build, Silver } from "./troop";
 export type { Clue, ClueKind } from "./clues";
-export type { Solution, FeedbackSignal } from "./grade";
+export type { Solution, Feedback } from "./grade";
 export type { Band } from "./select";
-export { bandForDateKey } from "./select";
+export { bandForDateKey, parForDateKey } from "./select";
 
 export interface Puzzle {
   number: number;
@@ -23,6 +23,8 @@ export interface Puzzle {
   troop: Ape[];
   clues: Clue[];
   space: number;
+  /** Expected guesses for this weekday — see DESIGN.md §5. */
+  par: number;
 }
 
 /**
@@ -47,6 +49,7 @@ export function generate(dateKey: string): Puzzle & { solution: Solution } {
     troop,
     clues,
     space,
+    par: parForDateKey(dateKey),
     solution: { order: trueOrder },
   };
 }

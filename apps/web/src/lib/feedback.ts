@@ -1,19 +1,14 @@
-import type { FeedbackSignal } from "@silbak/engine";
+import type { Feedback } from "@silbak/engine";
+import { TROOP_SIZE } from "@silbak/engine";
 
-export function feedbackGlyph(f: FeedbackSignal): string {
-  switch (f) {
-    case "exact":
-      return "■";
-    case "wrong":
-      return "○";
-  }
+/** "4 of 6 on their true rung." — the whole feedback language, in one line. */
+export function feedbackText(f: Feedback): string {
+  if (f.exact === TROOP_SIZE) return `All ${TROOP_SIZE} on their true rung.`;
+  if (f.exact === 0) return "None on their true rung.";
+  return `${f.exact} of ${TROOP_SIZE} on their true rung.`;
 }
 
-export function feedbackLabel(f: FeedbackSignal): string {
-  switch (f) {
-    case "exact":
-      return "Right rung.";
-    case "wrong":
-      return "Wrong rung.";
-  }
+/** Compact badge form: "4/6". */
+export function feedbackBadge(f: Feedback): string {
+  return `${f.exact}/${TROOP_SIZE}`;
 }

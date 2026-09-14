@@ -1,25 +1,39 @@
-import type { ApeId, FeedbackSignal } from "@silbak/engine";
+import type { ApeId, Feedback } from "@silbak/engine";
 
 export interface PersistedHistoryEntry {
   arrangement: ApeId[];
-  feedback: FeedbackSignal[];
+  feedback: Feedback;
 }
+
+/** Player-made ledger marks, keyed `${apeId}:${rung}` — see DeductionGrid. */
+export type Mark = "no" | "yes";
+export type Marks = Record<string, Mark>;
 
 export interface PersistedCurrent {
   dateKey: string;
   arrangement: ApeId[];
   history: PersistedHistoryEntry[];
   status: "playing" | "won" | "lost";
+  marks: Marks;
+}
+
+export interface PlayedEntry {
+  guesses: number;
+  solved: boolean;
+  /** The weekday par the player faced. Missing on entries recorded before
+   *  par existed; derive it from the puzzle number in that case. */
+  par?: number;
 }
 
 export interface Persisted {
-  v: 1;
+  v: 2;
   current?: PersistedCurrent;
   streak: { count: number; max: number; lastPlayedKey: string };
-  played: Record<number, { guesses: number; solved: boolean }>;
+  played: Record<number, PlayedEntry>;
 }
 
-const STORAGE_KEY = "silbak:v1";
+const STORAGE_KEY = "silbak:v2";
+const LEGACY_KEY = "silbak:v1";
 const PLAYED_CAP = 60;
 
 /** Daily rollover is local midnight, matching Wordle — never UTC. */
@@ -42,20 +56,43 @@ function dateKeyFromDate(d: Date): string {
 
 function emptyPersisted(): Persisted {
   return {
-    v: 1,
+    v: 2,
     streak: { count: 0, max: 0, lastPlayedKey: "" },
     played: {},
   };
 }
 
-/** Unknown or unparseable payload wipes and starts clean — never throws. */
+/**
+ * Unknown or unparseable payload wipes and starts clean — never throws.
+ *
+ * A v1 envelope (per-rung feedback, engine v2 puzzles) keeps its streak and
+ * played record — those are the player's history, whatever the engine did —
+ * and drops `current`, whose history entries no longer match either the
+ * feedback shape or the puzzle it was recorded against.
+ */
 export function loadPersisted(): Persisted {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyPersisted();
-    const parsed = JSON.parse(raw);
-    if (!parsed || parsed.v !== 1 || typeof parsed !== "object") return emptyPersisted();
-    return parsed as Persisted;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && parsed.v === 2) return parsed as Persisted;
+      return emptyPersisted();
+    }
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      if (parsed && typeof parsed === "object" && parsed.v === 1) {
+        const migrated: Persisted = {
+          v: 2,
+          streak: parsed.streak ?? emptyPersisted().streak,
+          played: parsed.played ?? {},
+        };
+        savePersisted(migrated);
+        localStorage.removeItem(LEGACY_KEY);
+        return migrated;
+      }
+    }
+    return emptyPersisted();
   } catch {
     return emptyPersisted();
   }
