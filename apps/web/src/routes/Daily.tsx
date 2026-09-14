@@ -13,7 +13,13 @@ export function Daily() {
   const dateKey = useGameStore((s) => s.dateKey);
 
   useEffect(() => {
-    load(todayKey());
+    // Only load if we're not already showing today's daily game — Daily
+    // remounts every time the user navigates away (to /archive or /about)
+    // and back, and an unconditional load() here would clobber in-progress
+    // arrangement/marks that haven't been submitted yet (those only persist
+    // to storage on submit()).
+    const state = useGameStore.getState();
+    if (state.dateKey !== todayKey() || state.isArchive) load(todayKey());
 
     const checkRollover = () => {
       const today = todayKey();
