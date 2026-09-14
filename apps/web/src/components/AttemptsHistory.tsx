@@ -1,6 +1,6 @@
 import type { Ape } from "@silbak/engine";
 import type { HistoryEntry } from "../state/useGameStore";
-import { feedbackGlyph } from "../lib/feedback";
+import { feedbackBadge, feedbackText } from "../lib/feedback";
 import styles from "./AttemptsHistory.module.css";
 
 interface AttemptsHistoryProps {
@@ -14,6 +14,12 @@ function shortName(name: string): string {
   return name.slice(0, 4).toUpperCase();
 }
 
+/**
+ * Each past arrangement plus its count. With count-only feedback this is the
+ * primary deduction surface: "guess 2 had Kanzi at 3 and scored 1; guess 3
+ * moved only Kanzi and scored 0" is a fact about a rung, and it is only
+ * recoverable if both arrangements are still on screen.
+ */
 export function AttemptsHistory({ history, troop }: AttemptsHistoryProps) {
   if (history.length === 0) return null;
   const apesById = new Map(troop.map((a) => [a.id, a]));
@@ -23,17 +29,21 @@ export function AttemptsHistory({ history, troop }: AttemptsHistoryProps) {
         <div className={styles.row} key={i}>
           <span className={styles.rowLabel}>#{i + 1}</span>
           <div className={styles.cells}>
-            {entry.arrangement.map((apeId, j) => {
+            {entry.arrangement.map((apeId) => {
               const ape = apesById.get(apeId);
-              const f = entry.feedback[j];
               return (
                 <span className={styles.cell} key={apeId}>
-                  <span className={styles.cellName}>{ape ? shortName(ape.name) : "?"}</span>
-                  <span className={`${styles.cellGlyph} ${styles[f]}`}>{feedbackGlyph(f)}</span>
+                  {ape ? shortName(ape.name) : "?"}
                 </span>
               );
             })}
           </div>
+          <span
+            className={`${styles.badge} ${entry.feedback.exact > 0 ? styles.some : ""}`}
+            aria-label={feedbackText(entry.feedback)}
+          >
+            {feedbackBadge(entry.feedback)}
+          </span>
         </div>
       ))}
     </div>

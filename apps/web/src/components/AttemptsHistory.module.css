@@ -27,36 +27,35 @@
 }
 
 .cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
   min-width: 0;
-  padding: var(--space-1) 2px;
+  padding: var(--space-2) 2px;
   background: var(--bark);
   border-radius: var(--radius-sm);
-}
-
-.cellName {
-  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
   font-family: var(--font-mono);
   font-size: 0.62rem;
   letter-spacing: 0.02em;
   color: var(--mist);
 }
 
-.cellGlyph {
-  font-size: 0.85rem;
-  line-height: 1;
-}
-
-.exact {
-  color: var(--banana);
-}
-
-.wrong {
+/* The count. --banana is the "correct" token, and this is exactly a count of
+   correct rungs — a 0 stays muted. */
+.badge {
+  flex-shrink: 0;
+  min-width: 3.2ch;
+  padding: var(--space-2) var(--space-1);
+  background: var(--bark);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.8rem;
   color: var(--mist);
+}
+
+.some {
+  color: var(--banana);
 }

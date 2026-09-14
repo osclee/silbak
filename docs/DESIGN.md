@@ -2,8 +2,10 @@
 
 > A daily deduction game. Rank six apes in a gorilla troop from silverback to omega in six guesses.
 
-Status: draft v0.10 · Owner: Oz · Last updated: 2026-09-13
+Status: draft v0.11 · Owner: Oz · Last updated: 2026-09-13
 
+> **v0.11 changelog:** the difficulty rework (`docs/DIFFICULTY-2026-09-13.md`, all three parts shipped together as engine v3). (1) **Feedback is a count, not a map**: after a guess the troop says how many apes stand on their true rung — never which. Per-rung binary feedback was measured at ~4 bits a guess against a ~7-bit puzzle, which made nearly every day a two-guess game no matter what the clues did; a count is the only feedback rule measured to move a careful solver past three guesses and produce a real Monday→Saturday curve. The board gained a player-kept ape × rung **ledger** (✗/✓) because elimination is now inferential. (2) **Trait-quantified clues** ("every elder outranks every subadult") join the named ones, `between` and the extreme `count` clues were reworded, every clue set must carry a relational clue, and the weekend bands were rebuilt with a cap on the dominance threshold — Friday went from one clue-kind signature to 26. (3) **Par**: each weekday carries an expected guess count; the share line reads `3/6 · par 3`, a one-guess solve earns 🥇, and the result card shows "vs par this month". See §2, §4, §5, §7 and §9.6.
+>
 > **v0.10 changelog:** persistence and the archive were both wrong in ways that only showed up a day later (`docs/REVIEW-2026-09-13.md` Phase 2). `submit()` now writes `streak`/`played` itself at the terminal guess instead of waiting for the next day's `load()` to roll it over — the old path meant a win never updated the streak until tomorrow, and merely opening the app on a day you didn't play recorded a loss, since `load()` used to persist a placeholder `current` on first open. `load()` no longer does that; `applyRollover` is now a safety net (a day with no guesses leaves no trace; a day whose terminal submit already recorded itself is a no-op, so nothing double-counts). An open tab left running past local midnight now notices via `visibilitychange`/`focus`/a 60s check, instead of only rolling over on the next full page load. The archive no longer leaks today or future dates (`/archive/<n>` redirects home or to `/archive` outside `[1, today)`) and gained a top-level error boundary instead of a white screen on a malformed URL; its list now shows each day's date/weekday and a 🍌/🪨 result marker instead of a bare puzzle number and a "Silbak epoch" line. See §9.5.
 >
 > **v0.9 changelog:** the board now supports deduction instead of fighting it (`docs/REVIEW-2026-09-13.md` Phase 1). Three changes, shipped together because testers hit all three in the same sitting: (1) feedback on a rung now persists until that rung's occupant changes, instead of the whole board's glyphs vanishing on any swap; (2) the attempts history renders each past arrangement (short name + glyph per rung), not just its feedback, since binary feedback is a position-elimination game and elimination is impossible without seeing what was where; (3) resubmitting an arrangement identical to the last graded one is now blocked, both at the button and in the store, since it can't teach the player anything. See §2 and §7.
@@ -54,31 +56,44 @@ Multiplayer, real-time play, unlimited/endless mode, accounts, leaderboards, mon
 
 **Interaction.** Tap an ape to select it; tap a second to swap them. Tap the same ape to deselect. Drag is not required — tap-to-swap is the primary input and must work on touch and keyboard.
 
-**Turn.** Submit the current arrangement. Each of the six positions returns feedback:
+**Turn.** Submit the current arrangement. The troop answers with one number: **how many apes stand on their true rung** — "4 of 6". Nothing about which ones, nothing about direction. This is the Mastermind / Bulls-and-Cows convention, and it needs no legend.
 
-| Signal | Meaning |
-|---|---|
-| `exact` | This ape belongs on this rung |
-| `wrong` | This ape does not belong on this rung — no information about which way to move it |
+The count belongs to the arrangement it graded. The board shows it beneath the ladder while that arrangement is still on the ladder, and steps it back (muted, "board changed since") the moment the player swaps anything; the attempts history keeps every arrangement with its count as the permanent record.
 
-Feedback is per-position and total — every rung always returns one of the two. There is no "no information" state.
+**The ledger.** Because a count says nothing about *which* rungs were right, elimination is inferential — "guess 2 scored 3, guess 3 moved only Kanzi and scored 2, so Kanzi *was* right at rung 3". The board carries an ape × rung grid the player marks by tapping (blank → ✗ ruled out → ✓ confirmed → blank). It is the equivalent of Wordle's coloured keyboard: a place to write down what has been inferred, not a solver. Nothing in it is checked against the solution, with one deliberate exception — a guess that scores 0 rules out every ape on it, and that is mechanical enough that the ledger fills it in. Without the ledger the game "demands a notepad", which was the exact complaint testers recorded for guess 3+ under the old per-rung scheme.
 
-Feedback persists on a rung until that rung's occupant changes: swapping two rungs clears their glyphs (their graded state no longer matches what's shown) but leaves every other rung's `■`/`○` in place, since the player didn't touch them. This is what makes position-elimination possible across a swap — the alternative (clearing the whole board on any move) forced the player to memorize prior feedback before touching anything.
-
-**Limit.** Six guesses. Win on all-`exact`. Loss reveals the true order.
+**Limit.** Six guesses. Win on 6 of 6. Loss reveals the true order.
 
 **Field notes.** Observations shown before the first guess, always true of the solution, never sufficient to determine it alone. Count varies more than in v0.1 (2–4 was the old range) since looser bands (§4) need more clues to narrow into.
 
 ### Feedback semantics — the precise rule
 
-Let `truth[apeId]` be the ape's zero-indexed true position. For a guess placing ape `a` at index `i`:
+Let `truth[apeId]` be the ape's zero-indexed true position. For a guess `g`:
 
 ```
-truth[a] === i  → exact
-truth[a] !== i  → wrong
+exact = |{ i : truth[g[i]] === i }|
 ```
 
-### Why this changed from directional to binary feedback
+The guess is solved when `exact === 6`.
+
+### Why this changed from per-rung binary to a count (v0.11)
+
+Binary feedback (below) fixed the directional problem and then hit the same wall one level up. Measured on 730 generated puzzles (`docs/DIFFICULTY-2026-09-13.md` Part 1): six rungs of binary feedback carry **4.1 bits** on a real first guess and split the surviving space into 38 distinct outcomes, while the whole puzzle only needs **7.1 bits**. Two guesses were structurally enough almost every day, and no clue-band tuning could change that — the bands moved a trait-reading player from 1.8 (Mon) to 2.4 (Sat) guesses, a spread of 0.6. Blind playtests matched: avg 2.17–2.27, max 4, zero losses.
+
+Every candidate lever was measured on the same puzzles with the same two solvers (a trait-greedy "attentive human" and a minimax upper bound). Feedback semantics was the only lever that moved the average past three:
+
+| Feedback | greedy avg | minimax avg | Mon → Sat |
+|---|---|---|---|
+| binary per rung (v0.2–v0.10) | 2.10 | 2.32 | 1.8 → 2.4 |
+| **count only (v0.11)** | **2.87** | **3.35** | **2.3 → 3.4** |
+| Kendall "challenges" | 2.97 | 3.09 | 2.3 → 3.6 |
+| adjacent-pair deference | 2.38 | 2.80 | 2.0 → 2.6 |
+
+Count-only won on teachability. Two side effects are worth keeping in view: it makes the traits *more* load-bearing (a trait-ignoring player averages 4.3 under count feedback vs 2.9 under binary, so "read the room" is worth 1.45 guesses instead of 0.8), and it makes losses at six possible but rare — a Wordle-shaped distribution instead of a game nobody loses. The share grid also got safer: a count row reveals only *how many*, where a per-rung row revealed *which*.
+
+The Kendall variant ("it would take 4 challenges to settle your order") is the most thematically honest signal in the table and lost only on teachability; `grade()` returns an object rather than a bare number so a second signal can ride alongside if it's ever tried.
+
+### Why this changed from directional to binary feedback (v0.2)
 
 The original v0.1 rule was directional (`up`/`down`, telling the player which way to move a wrong ape), with this stated rationale: *"up/down are strictly more generous than Mastermind's black/white pegs — a deliberate choice, since permutation puzzles without directional feedback are punishing on a 5-element space with only six guesses."*
 
@@ -130,31 +145,47 @@ buildTroop(rng)         → 6 apes, distinct names, gated traits
   ↓
 score + sort            → true order
   ↓
-candidateClues(order)   → ~62 clues, all true of the solution
+candidateClues(order)   → ~62 named clues + ~80 trait-quantified clues,
+                           all true of the solution
   ↓
 selectClues(band)       → 2–4 clues leaving |space| within the day's band,
-                           no single clue dominant, and the set irreducible
+                           no single clue dominant, the set irreducible, and
+                           at least one clue relational
   ↓
 verify                  → brute-force all 720 permutations
 ```
 
 Two hardening passes beyond the original spec, both in `select.ts`:
 
-- **Dominance margin.** No chosen clue may, read alone, narrow to within a configurable multiple of the band ceiling — otherwise the generator happily picks one very strong clue and pads the rest with filler the player doesn't actually need. Current value: `DOMINANCE_MARGIN = 1.6` — the multiple must stay achievable against the ceiling, and `ceiling × margin` can never exceed the ~120-600 permutations any single clue could theoretically leave standing (weakest kind, `neg`, leaves 600 of 720; strongest, `count`/`between`, leaves 120). At ceilings ≥375 (Friday, Saturday) no clue kind clears the margin at all, and the search deliberately falls back to the full candidate pool — see the Difficulty bands note below.
+- **Dominance margin.** No chosen clue may, read alone, narrow to within a configurable multiple of the band ceiling — otherwise the generator happily picks one very strong clue and pads the rest with filler the player doesn't actually need. Current value: `DOMINANCE_MARGIN = 1.6`, with the threshold **capped at `DOMINANCE_CAP = 350`** (v0.11). Without the cap, any ceiling ≥ 225 pushes the threshold past 360 — the solo strength of `order` and `half` — and the weekend's primary pool collapses to `neg` plus the weakest trait clues; that is the mechanism behind the v2 weekend bug (see Difficulty bands). 350 keeps the two named relational kinds eligible at every ceiling while still excluding `adjacent` (240) and `count`/`between` (120), and changes nothing for Sunday–Thursday, whose thresholds were already below it.
 - **Irreducibility.** No proper subset of the chosen clues may already reach band on its own — otherwise a 3rd/4th clue can ride along doing nothing. Checking single-clue removals is sufficient (removing a clue can only grow the surviving space, never shrink it), so this doesn't require enumerating all subsets.
+- **A relational clue in every set** (v0.11). A set of nothing but `neg` / `t-rung` ("X is not the silverback", stacked) narrows the space on paper while telling the player nothing about who stands over whom — 29% of v2 puzzles, every Friday and Saturday, were exactly that, and testers described them as guesswork. `selectClues` now refuses a set with no clue from {`order`, `adjacent`, `between`, `half`, `count`, `t-order`, `t-adj`, `t-pair`, `t-zone`, `t-count`}; `neg` stays available (testers loved it when it names the trait favourite), just never as the only information.
 
 ### Clue types
 
-Cut percentages are exact (not estimates) — each is a fixed function of troop size N=6, independent of which specific apes or clue instance: `order` and `between` only depend on relative order among 2-3 elements, so they're N-invariant; `adjacent`, `count`, `neg`, `half` scale with N.
+**Named clues.** Cut percentages are exact (not estimates) — each is a fixed function of troop size N=6, independent of which specific apes or clue instance: `order` and `between` only depend on relative order among 2-3 elements, so they're N-invariant; `adjacent`, `count`, `neg`, `half` scale with N.
 
 | Kind | Form | Cuts |
 |---|---|---|
 | `order` | "X steps aside when Y approaches." (X ranks below Y) | 50% |
 | `adjacent` | "X and Y — no one ranks in between." | 67% |
-| `count` | "N of the troop groom below X." | 83% |
+| `count` | "N of the troop groom below X." — at the extremes, "X is the silverback." / "X holds the lowest rung." (v0.11: the giveaway reads like one instead of like arithmetic) | 83% |
 | `neg` | "X is not the silverback." / "X does not hold the lowest rung." | 17% |
 | `half` | "X ranks in the top three." / "…bottom three." | 50% |
-| `between` | "Y ranks somewhere between X and Z." | 83% |
+| `between` | "Y ranks below X but above Z." (v0.11: the old "somewhere between X and Z" was read symmetrically by real players — 240 survivors — while the predicate was strict, 120) | 83% |
+
+**Trait-quantified clues** (v0.11, `classes.ts` + `clues.ts`). These talk about a *class* — every ape sharing one visible trait value — rather than a named ape, so the player's first job is decoding which apes the clue is about. Their solo strength is a continuum (anywhere from ~50 to ~650 survivors, depending on the troop's class sizes), which is what fills the gaps between the named kinds' lattice points. Two rules, both learned while prototyping: a class is always 2–4 apes (size 1 is a named clue in a costume; the whole troop says nothing), and two classes in one clue never overlap (classes of different traits — a heavy ape who is also scarred — are only paired when their members are disjoint).
+
+| Kind | Form |
+|---|---|
+| `t-order` | "Every elder outranks every subadult." |
+| `t-zone` | "Every scarred ape ranks outside the top two." / "Every juvenile ranks in the bottom three." |
+| `t-rung` | "The omega is a juvenile." / "The silverback is not full-silver." |
+| `t-adj` | "The two heavy apes hold neighbouring rungs." / "…do not hold neighbouring rungs." / "The three elders hold three consecutive rungs." |
+| `t-count` | "Exactly one of the three flecked apes ranks in the top three." |
+| `t-pair` | "A prime stands directly above a part-silver ape." (existential) |
+
+Every class carries its own wording (`singular`, `article`, `plural`, `is`, `isNot`) in `classes.ts`, chosen to match the labels on the rung exactly — "part-silver", "flecked", "ape with no silver" — so the decode step is a lookup, not a guess. Measured over 364 days, a trait clue appears on 65–100% of days depending on weekday and makes up the whole set on 2–55%; `test/diversity.test.ts` holds the overall figures to ≥60% / ≤40%.
 
 Phrasing rule: **clarity beats flavor whenever flavor could change the parse.** "Feeds in the first wave" is atmospheric and ambiguous; "ranks in the top three" is not. Atmosphere lives in the verbs, never in the relation.
 
@@ -162,23 +193,25 @@ Phrasing rule: **clarity beats flavor whenever flavor could change the parse.** 
 
 The generator targets a *surviving solution space*, not a difficulty label. Fewer survivors = easier.
 
-| Day | Band | avg space (sampled) | Feel |
-|---|---|---|---|
-| Mon | 16–44 | 33 | Nearly deducible |
-| Sun | 24–60 | 49 | Soft landing |
-| Tue | 72–135 | 117 | |
-| Wed | 135–195 | 178 | |
-| Thu | 195–224 | 204 | kept just under the 225 "neg-only pool" edge |
-| Fri | 240–360 | 330 | spans 4 achievable lattice points (see note) |
-| Sat | 360–504 | 490 | Deduction sets the frame, guessing does the work |
+| Day | Band | avg space | par | distinct spaces / kind signatures (364 days) | Feel |
+|---|---|---|---|---|---|
+| Mon | 16–44 | 34 | 3 | 12 / 41 | Nearly deducible |
+| Sun | 24–60 | 48 | 3 | 13 / 35 | Soft landing |
+| Tue | 72–135 | 116 | 4 | 15 / 35 | |
+| Wed | 135–195 | 172 | 4 | 18 / 29 | |
+| Thu | 195–224 | 210 | 4 | 12 / 31 | |
+| Fri | 225–300 | 272 | 4 | 14 / 26 | `order`/`half` + `neg` or trait mixes |
+| Sat | 288–400 | 343 | 5 | 16 / 14 | A trait clue in every set; deduction sets the frame |
 
-**A structural trap worth documenting, because it silently produced a real bug once:** `DOMINANCE_MARGIN` filters candidate clues by a *fixed* solo-survivor count per kind (order/half=360, adjacent=240, count/between=120, neg=600 — see the pipeline note above), which gives the eligible-clue pool hard edges at certain ceilings. In the zone `225 ≤ ceiling < 375`, only `neg` clues clear the margin, and stacking `neg`-only clues lands on a **sparse fixed lattice** of achievable spaces — {240, 288, 312, 336, 360, 384, 408, 480, 504} — not a continuum, because "not silverback"/"not lowest rung" on *k* apes is a clean inclusion-exclusion count. A naive proportional scale-up of the v0.2 bands put Friday's band entirely inside that zone at a single lattice point, and it landed on the identical `space=240` for **286 out of 286** sampled Fridays despite different troops and clues each day — real puzzles, zero actual variety. Fixed by widening Friday to straddle multiple lattice points (240–360). Any future band change that lands entirely inside `[225, 375)` should be checked against this lattice before shipping.
+Par is the expected guess count for the weekday (§5); the bands are what generation targets, par is what the player is told.
 
-The clue engine has a hard structural ceiling around **space = 504** (`720 − 120 − 120 + 24`, two weak `neg` clues via inclusion-exclusion), driven by `MIN_CLUES = 2` and the weakest clue type — no combination of real clues can exceed that regardless of band settings. Saturday's ceiling sits exactly at it.
+**A structural trap worth documenting, because it silently produced a real bug twice:** `DOMINANCE_MARGIN` filters candidate clues by a *fixed* solo-survivor count per named kind (order/half=360, adjacent=240, count/between=120, neg=600 — see the pipeline note above), which gives the eligible-clue pool hard edges at certain ceilings. Before v0.11, in the zone `225 ≤ ceiling < 375` only `neg` clues cleared the margin, and stacking `neg`-only clues lands on a **sparse fixed lattice** of achievable spaces — {240, 288, 312, 336, 360, 384, 408, 480, 504} — not a continuum, because "not silverback"/"not lowest rung" on *k* apes is a clean inclusion-exclusion count. A naive proportional scale-up of the v0.2 bands put Friday's band entirely inside that zone at a single lattice point, and it landed on the identical `space=240` for **286 out of 286** sampled Fridays. Widening Friday to 240–360 diversified the *count* but not the *kind* — every Friday was still `neg`-only, and Saturday (360–504, where the margin emptied the pool entirely) was two `neg` clues every single week. The in-band test could not see either bug, because both were in band.
 
-**Guesses-to-solve payoff** (Knuth-style optimal adaptive solver, real binary `grade()`, from `difficulty-simulation.test.ts`): average climbs from ~1.8 (space≈30, Monday-ish) to ~3.3–3.5 at the 480–504 ceiling, with the first-ever observed 5-guess optimal-play trials (~5% of runs at the top of the range) — genuinely more difficulty range than the 5-ape engine ever produced (avg maxed ~2.9, max ever 4, 0% needed 5+, up to its own 78-permutation ceiling). Still **100% solved within 6 guesses at every space size tested**, all the way to the 504 structural ceiling — no evidence a 7th guess is needed. A follow-up 75-puzzle agent playtest (non-optimal, attentive-human-style play) landed at avg 2.17 guesses, max 4, 0 losses — up from the 5-ape engine's own 75-puzzle playtest (avg 1.87, max 4 at 1.3% of puzzles vs 6-ape's 2.7%) — confirming the simulation's direction held under closer-to-real play, at a smaller (expected) magnitude than pure-optimal solving.
+v0.11 fixed the mechanism rather than the symptom: the dominance threshold is capped at 350 so `order`/`half` are eligible at every ceiling; the trait-quantified clues supply a continuum of solo strengths between the named lattice points; every set must carry a relational clue; and `test/diversity.test.ts` asserts ≥4 distinct spaces and ≥4 kind signatures per weekday over 105 samples each. Any future band change should be checked against that test, not just against in-band rate. With the relational rule an `order`/`half` clue alone leaves 360, so bands with a floor above 360 are unreachable by construction; Saturday's is deliberately below it.
 
-Selection is greedy over a shuffled clue pool: add a clue only if it strictly reduces the space and does not push it below the band floor; stop at the band ceiling or four clues, whichever comes first. Retry with a reshuffled pool up to 240 times (180 against a "no dominant clue" pool first, remainder against the full pool as fallback); if nothing lands in band and is irreducible, fall back to the best in-band-but-reducible result, then to the nearest miss.
+**Guesses-to-solve payoff** (trait-greedy solver, count-only `grade()`, 364 days — the same solver whose 2.10 average under binary feedback motivated the change): Mon 2.2 · Sun 2.4 · Tue 2.5 · Wed 2.6 · Thu 2.8 · Fri 3.0 · Sat 3.0, with 30–32% of weekend puzzles needing 4+ and no losses at 6. Space stops predicting solver difficulty much past ~250; what Saturday buys over Friday is that every set carries a trait clue (55% are trait clues only), and the decode step is human cost the solver doesn't pay. The minimax sweep in `difficulty-simulation.test.ts` (which ignores traits) sits at 4.4–5.3 guesses for space ≥ 100, 100% solved within 6 — the gap between the two solvers is the value of reading the room, and it is the gap a trait-blind human falls into. Blind agent playtest results for v3 are recorded in §9.6.
+
+Selection is greedy over a shuffled clue pool: add a clue only if it strictly reduces the space and does not push it below the band floor; once the space is under the ceiling but the set has no relational clue yet, only relational clues are considered; stop at the band ceiling (with a relational clue present) or four clues, whichever comes first. Retry with a reshuffled pool up to 240 times (180 against the "no dominant clue" pool first, remainder against the full pool as fallback); if nothing lands in band and is irreducible, fall back to the best in-band-but-reducible result, then to the nearest miss. Neither fallback has been observed to fire over 364 days of v3 output; they are a safety net, not a path puzzles take.
 
 **Invariants the generator must satisfy (assert in tests):**
 
@@ -187,6 +220,7 @@ Selection is greedy over a shuffled clue pool: add a clue only if it strictly re
 - `2 ≤ clues.length ≤ 4`.
 - `space ≥ 2` — never fully determined.
 - No single clue dominant (dominance margin); clue set irreducible where the search budget allows.
+- At least one relational clue per puzzle; ≥4 distinct spaces and ≥4 kind signatures per weekday over ≥100 samples (`diversity.test.ts`).
 - Identical output across Node, browser, and CI for the same seed.
 
 ---
@@ -194,20 +228,30 @@ Selection is greedy over a shuffled clue pool: add a clue only if it strictly re
 ## 5. Share format
 
 ```
-Silbak #219  4/6
-🪨🪨🍌🪨🪨
-🍌🪨🪨🍌🪨
-🍌🍌🪨🍌🍌
-🍌🍌🍌🍌🍌
+Silbak #219  4/6 · par 3
+🍌🍌🪨🪨🪨🪨
+🍌🍌🍌🪨🪨🪨
+🍌🍌🍌🍌🪨🪨
+🍌🍌🍌🍌🍌🍌
 ```
+
+Each row is the guess's count — `exact` bananas, then rocks — so a row is a bar, not a map. A solve in one reads `1/6 · par 2 🥇`.
 
 Rules, non-negotiable:
 
-- **Banana and rock only.** This was originally framed as hiding directional arrows; now that feedback itself is non-directional, it's simpler: banana/rock is still the only spoiler-safe granularity (naming which apes were wrong would leak information).
+- **Banana and rock only.** This was originally framed as hiding directional arrows; then as hiding which rungs were right. As of v0.11 the row *is* only a count, so the share grid reveals strictly less than the board does — the safest it has been.
 - No ape names, no traits, no clue text.
 - Loss renders `X/6` and shows all six rows.
 - Line 1 is the only text. Puzzle number, not date — dates cause timezone arguments.
 - Optional trailing streak line (`🔥 12`) once streaks exist. Off by default.
+
+### Par (v0.11)
+
+With a real weekly curve the guess count means something different on Monday and Saturday, so the score says so. Every weekday has a **par** (`PAR` in `select.ts`, exposed as `puzzle.par`): Mon 3 · Tue–Thu 4 · Fri 4 · Sat 5 · Sun 3 — the v3 blind playtest's per-weekday medians (§9.6) smoothed into the modelled Mon→Sat ramp, about one guess above the proposal's hypothesis, since even attentive players sit well above the trait-greedy model under count feedback. Provisional until a month of real `played` entries exists. The share line carries it; the result card reads "On par" / "One under par" / "Two over par"; and the stats strip shows **vs par this month** — the sum of `guesses − par` over the month's daily results, a loss counting as `MAX_GUESSES + 1` strokes (one worse than the worst solve). That number is what a regular can chase that a streak can't: playing *well* on hard days. Par is recorded on each `played` entry at the terminal submit, so a later re-tune doesn't rewrite history.
+
+The **clean read** marker (🥇) is a solve in one — a perfect read of traits and notes. A perfect trait reader hits it on ~14% of days; humans far less. It is the rarity badge the game lacked.
+
+Not done, deliberately: time scoring and point-per-rung scoring, which both fight the 90-seconds-once product thesis.
 
 **Copy target:** `navigator.clipboard.writeText`, with `navigator.share` on mobile where available, falling back to a selectable textarea. Never fail silently — the button label is the receipt (`Copy result` → `Copied to clipboard`).
 
@@ -420,34 +464,40 @@ As of v0.4, the canopy scene (previous section) adds a second, deliberately sepa
 │  FIELD NOTES        3 obs.  │
 │  ▸ ...                      │
 ├─────────────────────────────┤
-│  legend: ■ ○                │
-├─────────────────────────────┤
-│  ① [portrait] NAME       ○  │
+│  ① [portrait] NAME          │
 │     prime · heavy · full    │
 │  ② ...                      │
 ├─────────────────────────────┤
+│  GUESS 2   4 of 6 on their  │
+│            true rung.       │
+├─────────────────────────────┤
 │  [ SUBMIT RANKING ]         │
-│  4 guesses left   tap hint  │
+│  4 guesses left · par 3     │
+├─────────────────────────────┤
+│  LEDGER     1 2 3 4 5 6     │
+│  KANZ       ✗ · · ✓ · ·     │
+│  NDOK       · · ✗ · · ·     │
+│  ...                        │
 ├─────────────────────────────┤
 │  ATTEMPTS                   │
-│  #1  HESH○ BARA○ TAJI○ ...  │
-│  #2  BARA○ HESH○ TAJI○ ...  │
+│  #1  HESH BARA TAJI ... 3/6 │
+│  #2  BARA HESH TAJI ... 4/6 │
 └─────────────────────────────┘
 ```
 
-Each attempts row shows the full submitted arrangement, not just its feedback: one cell per rung, a four-letter name clipped from the ape's full name plus its `■`/`○` glyph. Binary feedback makes past arrangements load-bearing — "Kanzi was wrong at rung 3 in guess 2" is only recoverable if guess 2's rung 3 occupant is still on screen — so the history can't be glyph-only chips the way a ternary-feedback game's could be. The submit button (and the keyboard path in the store) refuses to resubmit an arrangement identical to the last graded one, since that guess teaches nothing new.
+Each attempts row shows the full submitted arrangement and its count: one cell per rung, a four-letter name clipped from the ape's full name, then a `n/6` badge (`--banana` when n > 0, since a count of correct rungs is exactly what that token means). With count-only feedback the history is the primary deduction surface — the fact "guess 3 moved only Kanzi and dropped from 3 to 2" lives in two rows — so it can't be glyph-only chips. The ledger (§2) sits between the controls and the history. The submit button (and the keyboard path in the store) refuses to resubmit an arrangement identical to the last graded one, since that guess teaches nothing new. A visually-hidden `aria-live` region announces each guess's count.
 
-Result state replaces the submit block with headline + grid + copy button. The archive (`/archive/:number`) reuses the identical board with a date header and no streak effect.
+Result state replaces the submit block with headline, the par line ("Two over par · par 3", or 🥇 for a clean read), the banana/rock grid, a stats strip (played, win %, streak, best, vs par this month — daily only), and the copy button. The archive (`/archive/:number`) reuses the identical board with a date header, no streak effect, and no stats.
 
 ---
 
 ## 8. Accessibility
 
 - Rungs are `<button>` elements in DOM order; tab moves down the ladder, Enter selects/swaps.
-- Feedback is never color-only — `■`, `○` glyphs accompany every state.
+- Feedback is a number in words ("4 of 6 on their true rung"), never colour-only; ledger marks are `✗`/`✓` glyphs with `aria-label`s, and the grid uses `role="grid"` with row/column headers.
 - Selection is never color-only either: the selected rung carries `aria-pressed`, its label ends "Selected, choose another ape to swap with", and it is nudged 10px out of the column.
 - Contrast (recomputed for the v0.4 palette): `--forest` on `--paper` (primary text on the page) is ~12.7:1; `--moss` on `--paper` (secondary text on the page) is ~9.7:1; `--paper` on `--bark` (name text on a rung) is ~5.75:1; `--mist` on `--bark` (secondary text on a rung) is ~4.65:1; `--banana` on `--bark` (the correct-rung glyph) is ~4.3:1. Verify any new pairing at 4.5:1 minimum — `--banana` on `--bark` is the one pairing that runs slightly under that on paper, tolerated only because the ■/○ glyph shape (next bullet) already carries the signal independent of color. Portrait pairings (v0.6): `--fur` on `--rock` (the silhouette on its disc) is ~8.6:1; `--silver` on `--fur` (the saddle on the body) is ~8.5:1; `--silver` on `--rock` is ~1:1, which is why the portrait keeps a `--fur-deep` outline between any silver and the frame. Selected-rung pairings (v0.8, all on `--moss`): `--paper` name 9.7:1, `--mist` traits and "wrong" glyph 7.8:1, `--banana` "correct" glyph 7.2:1, `--rock` portrait disc and ring 6.4:1 — the whole point of that surface being dark (see §6).
-- `aria-live="polite"` region announces the result of each submission ("Rung 3 correct, four rungs wrong").
+- `aria-live="polite"` region in the board announces each guess's count ("Guess 2: 4 of 6 on their true rung"); the result card has its own.
 - Full keyboard play with no pointer.
 - Target size ≥ 44px on every interactive element.
 
@@ -457,6 +507,7 @@ Result state replaces the submit block with headline + grid + copy button. The a
 
 1. ~~Four clues may be one too many.~~ Superseded — clue count is now governed by the dominance-margin and irreducibility checks (§4) rather than a raw count cap; instrument guesses-to-solve distribution again after the v0.2 changes settle.
 2. ~~Five apes vs six.~~ **Resolved in v0.3 — switched to six.** Prototyped as an isolated parallel engine (`packages/engine/src/proto6/` at the time), validated via simulation (avg guesses climbs to ~3.3-3.5 at the new ceiling vs 5-ape's ~2.9 max, first-ever 5-guess optimal-play trials) and a 75-puzzle agent playtest (avg 2.17 vs 5-ape's 1.87, 0 losses either way), then promoted to replace the 5-ape engine outright. The seventh-guess concern didn't materialize — 6 guesses stayed sufficient at every difficulty level tested, including the 504-permutation structural ceiling. One real caveat surfaced by the playtest, not resolvable by simulation: hand-tracking six traits felt like genuine bookkeeping overhead via a CLI harness; worth watching whether the real visual ladder UI keeps that feeling like reasoning rather than tedium.
-3. **Should traits be hidden until guess two?** Would create a genuine opening decision but breaks the "learnable in one turn" pillar.
-4. **Hard mode.** Candidate rule: any rung marked `exact` locks and cannot be swapped. Cheap to build, well-understood by the audience. Worth revisiting after v0.2's manual playtest results — if binary feedback alone plays well, hard mode may be unnecessary extra complexity; if it doesn't, hard mode is the next lever before touching ape count.
+3. ~~Should traits be hidden until guess two?~~ **Closed in v0.11** — traits are worth 0.8 guesses under binary feedback and 1.45 under count feedback, so hiding them would matter more and hurt more; it also breaks "learnable in one turn". Recorded in `docs/DIFFICULTY-2026-09-13.md` Part 4 with the other ruled-out levers (seven apes, fewer guesses, an unreliable note, observe-or-submit, hard mode — probing was measured worth 0.03 guesses).
+4. ~~Hard mode.~~ **Closed in v0.11** — there is no per-rung `exact` to lock any more, and consistent-guess enforcement was measured at no difficulty effect for a logical player.
 5. ~~Streak semantics.~~ **Resolved in v0.10.** Archive is practice — it never touches `streak` or `played` (`useGameStore.ts`'s `submit()` guards on `isArchive`). For the daily: streak = consecutive daily wins, updated at the terminal submit (the moment the day's outcome is knowable), not on the next day's rollover. An opened-but-unplayed day is neither a win nor a loss and leaves no trace — only a day with at least one submitted guess can affect the streak.
+6. **v3 playtest gate** (`docs/DIFFICULTY-2026-09-13.md` §3.1). Count-only feedback was gated on a 75-puzzle blind agent playtest (#600–674, five agents, 15 each) before promotion; the success bar was avg 3.0–3.5, ≥30% of puzzles needing 4+, losses under ~5% and concentrated on Fri/Sat, and qualitative notes saying "tricky" rather than "unfair". **Result (38 puzzles completed before the run was stopped; #600–669):** avg **4.05** guesses (a loss counted as 6), median 4, 66% needing 4+, 2 losses (5.3% — one Saturday, one Wednesday), distribution 1→6 of 2 · 5 · 6 · 7 · 12 · 6. Per weekday (n = 5–6): Mon 4.0 · Tue 3.4 · Wed 4.5 · Thu 4.4 · Fri 3.8 · Sat 5.0 · Sun 3.0. The gate **overshot** on average and 4+ share and sat at the edge on losses: the agents landed at the proposal's trait-*ignoring* bound (4.3) rather than its careful-human bound (2.9), where the same class of agent had sat 0.1 above the model under binary feedback. Two caveats: they played through the CLI with no ledger, which is exactly the aid the proposal said count feedback depends on, and no qualitative notes survived the stop. Decision (Oz, 2026-09-13): ship count-only and raise par to the smoothed medians rather than fall back to the ends-binary-plus-count variant; sanity-check with real play on the ledger UI before launch, and revisit par with a month of `played` data. Monday is the day to watch — three of five took five guesses against a hypothesised par of 2.
