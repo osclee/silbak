@@ -1,8 +1,7 @@
 import { shareGrid } from "@silbak/engine";
-import type { Feedback } from "@silbak/engine";
 
-export function buildShareText(history: Feedback[], solved: boolean, puzzleNumber: number, par: number): string {
-  return shareGrid(history, solved, puzzleNumber, par);
+export function buildShareText(rows: boolean[][], solved: boolean, puzzleNumber: number, par: number): string {
+  return shareGrid(rows, solved, puzzleNumber, par);
 }
 
 export type ShareResult = "shared" | "copied" | "failed";

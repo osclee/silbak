@@ -7,9 +7,9 @@ import { selectClues, bandForDateKey, parForDateKey } from "./select";
 import { allPermutations } from "./permutations";
 import { ENGINE_VERSION, EPOCH, puzzleNumber } from "./version";
 import type { Solution } from "./grade";
-import { grade, isSolved, shareGrid, MAX_GUESSES } from "./grade";
+import { grade, gradeMask, isSolved, shareGrid, MAX_GUESSES } from "./grade";
 
-export { ENGINE_VERSION, EPOCH, puzzleNumber, grade, isSolved, shareGrid, TROOP_SIZE, MAX_GUESSES };
+export { ENGINE_VERSION, EPOCH, puzzleNumber, grade, gradeMask, isSolved, shareGrid, TROOP_SIZE, MAX_GUESSES };
 export type { Ape, ApeId, Age, Build, Silver } from "./troop";
 export type { Clue, ClueKind } from "./clues";
 export type { Solution, Feedback } from "./grade";

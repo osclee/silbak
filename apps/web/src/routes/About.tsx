@@ -95,8 +95,9 @@ export function About() {
         <h2>Par and sharing</h2>
         <p>
           Each weekday has a <strong>par</strong> — the number of guesses a careful player needs. Mondays and
-          Sundays are gentler, Saturdays are not. Your result copies as a grid of 🍌 and 🪨 with the par on the first line —
-          no names, no positions, nothing that spoils the answer. Solve in one and the line earns a 🥇.
+          Sundays are gentler, Saturdays are not. Your result copies as a grid of 🍌 and 🪨, one row per guess,
+          banana at each rung you had right — no names, no ape order, nothing that spoils the answer, but the
+          shape of each row is yours. Solve in one and the line earns a 🥇.
         </p>
       </section>
     </div>

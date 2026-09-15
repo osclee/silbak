@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { MAX_GUESSES, TROOP_SIZE } from "@silbak/engine";
+import { MAX_GUESSES } from "@silbak/engine";
 import type { Ape, ApeId } from "@silbak/engine";
 import type { HistoryEntry, GameStatus } from "../state/useGameStore";
 import { buildShareText, shareOrCopy } from "../lib/share";
@@ -34,15 +34,12 @@ export function ResultCard({
 
   const solved = status === "won";
   const cleanRead = solved && history.length === 1;
-  const grid = history
-    .map((entry) => "🍌".repeat(entry.feedback.exact) + "🪨".repeat(TROOP_SIZE - entry.feedback.exact))
-    .join("\n");
-  const shareText = buildShareText(
-    history.map((h) => h.feedback),
-    solved,
-    puzzleNumber,
-    par,
-  );
+  // Positional per rung — the guesser already knows their own answer by
+  // share time; see grade.ts's shareGrid doc comment for the accepted
+  // leak-to-other-players tradeoff this was weighed against.
+  const rows = history.map((entry) => entry.arrangement.map((apeId, i) => apeId === revealOrder[i]));
+  const grid = rows.map((row) => row.map((hit) => (hit ? "🍌" : "🪨")).join("")).join("\n");
+  const shareText = buildShareText(rows, solved, puzzleNumber, par);
 
   const handleCopy = async () => {
     const result = await shareOrCopy(shareText);

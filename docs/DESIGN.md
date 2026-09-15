@@ -2,8 +2,10 @@
 
 > A daily deduction game. Rank six apes in a gorilla troop from silverback to omega in six guesses.
 
-Status: draft v0.11 · Owner: Oz · Last updated: 2026-09-13
+Status: draft v0.12 · Owner: Oz · Last updated: 2026-09-15
 
+> **v0.12 changelog:** the share grid went from a count bar to a positional map — each row now shows banana/rock at the rung it actually landed on (`gradeMask` in `grade.ts`), not `exact` bananas left-packed. This is a deliberate reversal of the v0.11 "row is only a count" rule, made with the leak it reopens fully priced in: because everyone solves the same daily puzzle and the trait-obvious first guess is right often enough to be the taught opening move (`NOISE`, §4), a positional row can hand a friend who hasn't played yet the exact placement of every rung their own first guess would also land on — not a vague hint, real solution content, for free. Accepted anyway because a per-guess reveal only pays off for a viewer who then guesses that exact row's arrangement, and because the grid feeling like a fingerprint of *your* guesses (the thing Wordle's grid has and a left-packed bar doesn't) was judged worth that bounded, guess-1-concentrated risk. In-game feedback is unchanged — still `grade()`'s bare count, never a map; only the already-finished share artifact went positional. See §5.
+>
 > **v0.11 changelog:** the difficulty rework (`docs/DIFFICULTY-2026-09-13.md`, all three parts shipped together as engine v3). (1) **Feedback is a count, not a map**: after a guess the troop says how many apes stand on their true rung — never which. Per-rung binary feedback was measured at ~4 bits a guess against a ~7-bit puzzle, which made nearly every day a two-guess game no matter what the clues did; a count is the only feedback rule measured to move a careful solver past three guesses and produce a real Monday→Saturday curve. The board gained a player-kept ape × rung **ledger** (✗/✓) because elimination is now inferential. (2) **Trait-quantified clues** ("every elder outranks every subadult") join the named ones, `between` and the extreme `count` clues were reworded, every clue set must carry a relational clue, and the weekend bands were rebuilt with a cap on the dominance threshold — Friday went from one clue-kind signature to 26. (3) **Par**: each weekday carries an expected guess count; the share line reads `3/6 · par 3`, a one-guess solve earns 🥇, and the result card shows "vs par this month". See §2, §4, §5, §7 and §9.6.
 >
 > **v0.10 changelog:** persistence and the archive were both wrong in ways that only showed up a day later (`docs/REVIEW-2026-09-13.md` Phase 2). `submit()` now writes `streak`/`played` itself at the terminal guess instead of waiting for the next day's `load()` to roll it over — the old path meant a win never updated the streak until tomorrow, and merely opening the app on a day you didn't play recorded a loss, since `load()` used to persist a placeholder `current` on first open. `load()` no longer does that; `applyRollover` is now a safety net (a day with no guesses leaves no trace; a day whose terminal submit already recorded itself is a no-op, so nothing double-counts). An open tab left running past local midnight now notices via `visibilitychange`/`focus`/a 60s check, instead of only rolling over on the next full page load. The archive no longer leaks today or future dates (`/archive/<n>` redirects home or to `/archive` outside `[1, today)`) and gained a top-level error boundary instead of a white screen on a malformed URL; its list now shows each day's date/weekday and a 🍌/🪨 result marker instead of a bare puzzle number and a "Silbak epoch" line. See §9.5.
@@ -89,7 +91,7 @@ Every candidate lever was measured on the same puzzles with the same two solvers
 | Kendall "challenges" | 2.97 | 3.09 | 2.3 → 3.6 |
 | adjacent-pair deference | 2.38 | 2.80 | 2.0 → 2.6 |
 
-Count-only won on teachability. Two side effects are worth keeping in view: it makes the traits *more* load-bearing (a trait-ignoring player averages 4.3 under count feedback vs 2.9 under binary, so "read the room" is worth 1.45 guesses instead of 0.8), and it makes losses at six possible but rare — a Wordle-shaped distribution instead of a game nobody loses. The share grid also got safer: a count row reveals only *how many*, where a per-rung row revealed *which*.
+Count-only won on teachability. Two side effects are worth keeping in view: it makes the traits *more* load-bearing (a trait-ignoring player averages 4.3 under count feedback vs 2.9 under binary, so "read the room" is worth 1.45 guesses instead of 0.8), and it makes losses at six possible but rare — a Wordle-shaped distribution instead of a game nobody loses. At the time this also made the share grid safer, since a count row revealed only *how many* where a per-rung row revealed *which* — v0.12 (§5) knowingly gave that particular side effect back up, without reopening in-game feedback itself.
 
 The Kendall variant ("it would take 4 challenges to settle your order") is the most thematically honest signal in the table and lost only on teachability; `grade()` returns an object rather than a bare number so a second signal can ride alongside if it's ever tried.
 
@@ -229,17 +231,17 @@ Selection is greedy over a shuffled clue pool: add a clue only if it strictly re
 
 ```
 Silbak #219  4/6 · par 3
-🍌🍌🪨🪨🪨🪨
-🍌🍌🍌🪨🪨🪨
-🍌🍌🍌🍌🪨🪨
+🍌🪨🪨🍌🪨🪨
+🍌🍌🪨🍌🪨🪨
+🍌🍌🍌🍌🪨🍌
 🍌🍌🍌🍌🍌🍌
 ```
 
-Each row is the guess's count — `exact` bananas, then rocks — so a row is a bar, not a map. A solve in one reads `1/6 · par 2 🥇`.
+Each row is a positional map of that guess (`gradeMask` in `grade.ts`): banana at the rung the guess had right, rock elsewhere — not a left-packed bar of the count. A solve in one reads `1/6 · par 2 🥇`.
 
 Rules, non-negotiable:
 
-- **Banana and rock only.** This was originally framed as hiding directional arrows; then as hiding which rungs were right. As of v0.11 the row *is* only a count, so the share grid reveals strictly less than the board does — the safest it has been.
+- **Banana and rock only.** This was originally framed as hiding directional arrows; then as hiding which rungs were right entirely (v0.11's count-only row). As of v0.12 the row is positional again, by deliberate choice — see the v0.12 changelog above for the leak this reopens and why it was accepted. No ape names or arrangement is ever printed alongside it, so a viewer can only act on a row by independently guessing that exact arrangement.
 - No ape names, no traits, no clue text.
 - Loss renders `X/6` and shows all six rows.
 - Line 1 is the only text. Puzzle number, not date — dates cause timezone arguments.

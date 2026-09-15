@@ -41,25 +41,37 @@ export function isSolved(feedback: Feedback): boolean {
 }
 
 /**
- * Banana/rock share grid: one row per guess, `exact` bananas then rocks. No
- * arrows, no names — see DESIGN.md §5. A count row reveals strictly less than
- * the old per-rung row did (only *how many*, never *which*), so the format
- * is safer to share than it was, not just unchanged.
+ * Per-rung hit mask for a guess: true at rung i if that guess had the right
+ * ape there. Only used to build the share grid below — in-game feedback
+ * stays the count from grade() above; see DESIGN.md §2 for why those stay
+ * different (leaking this while playing would collapse the difficulty curve
+ * the count-only rule was built to produce).
+ */
+export function gradeMask(guess: readonly ApeId[], solution: Solution): boolean[] {
+  const truth = truthMap(solution.order);
+  return guess.map((apeId, i) => truth[apeId] === i);
+}
+
+/**
+ * Banana/rock share grid: one row per guess, banana at each rung that guess
+ * had right, rock elsewhere — a positional map of the guess, not just its
+ * count. No ape names, no traits — see DESIGN.md §5 ("Positional share
+ * grid"). This is a deliberate, considered reveal: unlike in-game feedback,
+ * the guesser already knows their own answer by share time, and a friend
+ * who hasn't played can only exploit a row by also guessing that row's exact
+ * arrangement — accepted as a real but bounded risk, most likely on a
+ * commonly-converged-on first guess (the trait-obvious read `NOISE` is
+ * tuned around).
  *
  * `par` is the weekday's expected guess count (DESIGN.md §5); a solve in one
  * earns the clean-read marker.
  */
-export function shareGrid(
-  history: readonly Feedback[],
-  solved: boolean,
-  puzzleNumber: number,
-  par: number,
-): string {
-  const score = solved ? String(history.length) : "X";
-  const cleanRead = solved && history.length === 1 ? " 🥇" : "";
+export function shareGrid(rows: readonly boolean[][], solved: boolean, puzzleNumber: number, par: number): string {
+  const score = solved ? String(rows.length) : "X";
+  const cleanRead = solved && rows.length === 1 ? " 🥇" : "";
   const header = `Silbak #${puzzleNumber}  ${score}/${MAX_GUESSES} · par ${par}${cleanRead}`;
-  const rows = history.map((f) => "🍌".repeat(f.exact) + "🪨".repeat(TROOP_SIZE - f.exact)).join("\n");
-  return `${header}\n${rows}`;
+  const body = rows.map((row) => row.map((hit) => (hit ? "🍌" : "🪨")).join("")).join("\n");
+  return `${header}\n${body}`;
 }
 
 /** The guess limit. Lives in the engine so the share line and the web agree. */
