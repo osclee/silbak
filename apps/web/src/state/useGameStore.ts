@@ -41,6 +41,7 @@ interface GameState {
    *  grid is where the inference is written down. */
   marks: Marks;
   select: (rungIndex: number) => void;
+  swap: (a: number, b: number) => void;
   submit: () => void;
   cycleMark: (apeId: ApeId, rung: number) => void;
   load: (dateKey: string, opts?: { archive?: boolean }) => void;
@@ -127,8 +128,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ selected: null });
       return;
     }
+    get().swap(selected, rungIndex);
+  },
+
+  // Direct swap by rung index, independent of tap-to-select — the drag-and-drop
+  // path lands here instead of going through `selected`, but ends up at the
+  // same arrangement mutation as a tap-swap would.
+  swap: (a, b) => {
+    const { arrangement, status } = get();
+    if (status !== "playing" || a === b) return;
     const next = arrangement.slice();
-    [next[selected], next[rungIndex]] = [next[rungIndex], next[selected]];
+    [next[a], next[b]] = [next[b], next[a]];
     set({ arrangement: next, selected: null });
   },
 

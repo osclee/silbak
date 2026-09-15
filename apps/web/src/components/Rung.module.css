@@ -57,6 +57,26 @@
   box-shadow: 0 10px 18px color-mix(in srgb, var(--forest) 38%, transparent);
 }
 
+.rung:not(:disabled) {
+  cursor: grab;
+}
+
+/* The rung being carried during a drag. Faded in place rather than hidden —
+   the browser already paints its own drag image following the pointer, so
+   this is just what's left behind at the source slot. */
+.dragging {
+  opacity: 0.4;
+}
+
+/* The rung currently under the pointer during a drag, i.e. where a drop would
+   land. Same ring treatment as .selected (both mean "this is the other half
+   of the swap") but on the light --card surface rather than --moss, since a
+   drop target hasn't been picked up itself. */
+.dropTarget {
+  border-color: var(--rock);
+  box-shadow: 0 0 0 2px var(--rock);
+}
+
 .rank {
   font-family: var(--font-mono);
   color: var(--mist);

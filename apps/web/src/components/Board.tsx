@@ -24,6 +24,7 @@ export function Board({ dateHeader }: BoardProps) {
     revealOrder,
     marks,
     select,
+    swap,
     submit,
     cycleMark,
   } = useGameStore();
@@ -53,7 +54,14 @@ export function Board({ dateHeader }: BoardProps) {
 
       <FieldNotes clues={puzzle.clues} />
 
-      <Ladder troop={puzzle.troop} arrangement={arrangement} selected={selected} playing={playing} onSelect={select} />
+      <Ladder
+        troop={puzzle.troop}
+        arrangement={arrangement}
+        selected={selected}
+        playing={playing}
+        onSelect={select}
+        onSwap={swap}
+      />
 
       {/* The verdict on the last guess. Tied to the arrangement it graded:
           once the board changes it stays visible but steps back, since the
@@ -79,7 +87,7 @@ export function Board({ dateHeader }: BoardProps) {
             <span>
               {guessesLeft} guess{guessesLeft === 1 ? "" : "es"} left · par {puzzle.par}
             </span>
-            <span>{unchanged ? "Change something first" : "Tap an ape to move it"}</span>
+            <span>{unchanged ? "Change something first" : "Tap or drag an ape to move it"}</span>
           </div>
         </div>
       ) : (

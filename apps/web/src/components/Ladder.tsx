@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState, type DragEvent } from "react";
 import type { Ape, ApeId } from "@silbak/engine";
 import { Rung } from "./Rung";
 import styles from "./Ladder.module.css";
@@ -12,6 +12,7 @@ interface LadderProps {
   selected: number | null;
   playing: boolean;
   onSelect: (index: number) => void;
+  onSwap: (a: number, b: number) => void;
 }
 
 /** Swap flight time. Deliberately slower than --motion-fast (the selection
@@ -36,25 +37,69 @@ function motionAllowed(): boolean {
   return !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function Ladder({ troop, arrangement, selected, playing, onSelect }: LadderProps) {
+export function Ladder({ troop, arrangement, selected, playing, onSelect, onSwap }: LadderProps) {
   const apesById = new Map(troop.map((a) => [a.id, a]));
 
   const nodes = useRef(new Map<ApeId, HTMLButtonElement>());
   const flights = useRef(new Map<ApeId, Animation>());
-  /** Rung positions captured in the click handler, i.e. *before* the store
-   *  reorders `arrangement` — the "First" half of a FLIP. Null on every render
-   *  a tap didn't cause, so nothing else that reflows the ladder (feedback
-   *  landing, a resize, a new puzzle loading) can be mistaken for a swap. */
+  /** Rung positions captured just before the store reorders `arrangement` —
+   *  the "First" half of a FLIP. Null on every render a swap didn't cause, so
+   *  nothing else that reflows the ladder (feedback landing, a resize, a new
+   *  puzzle loading) can be mistaken for one. */
   const beforeTops = useRef<Map<ApeId, number> | null>(null);
 
-  function handleSelect(index: number) {
+  // Which rung a drag picked up, and which one it's currently hovering over —
+  // purely visual (Rung.module.css's .dragging / .dropTarget), separate from
+  // `selected` so a drag never leaves a tap-selection dangling.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+
+  function captureBeforeTops() {
     const tops = new Map<ApeId, number>();
     // offsetTop rather than getBoundingClientRect(): it's a layout box, so it
     // is immune both to page scroll and to a transform still running on a rung
     // from a swap the player interrupted.
     for (const [id, el] of nodes.current) tops.set(id, el.offsetTop);
     beforeTops.current = tops;
+  }
+
+  function handleSelect(index: number) {
+    captureBeforeTops();
     onSelect(index);
+  }
+
+  function handleDragStart(index: number, e: DragEvent<HTMLButtonElement>) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+    setDragIndex(index);
+  }
+
+  function handleDragOver(index: number, e: DragEvent<HTMLButtonElement>) {
+    if (dragIndex === null || dragIndex === index) return;
+    e.preventDefault(); // required for the element to accept a drop
+    e.dataTransfer.dropEffect = "move";
+    setDropIndex(index);
+  }
+
+  function handleDragLeave(index: number) {
+    setDropIndex((current) => (current === index ? null : current));
+  }
+
+  function handleDrop(index: number, e: DragEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    const from = dragIndex;
+    setDragIndex(null);
+    setDropIndex(null);
+    if (from === null || from === index) return;
+    captureBeforeTops();
+    onSwap(from, index);
+  }
+
+  function handleDragEnd() {
+    // Covers a drop outside any rung, or the drag being cancelled (e.g. Esc) —
+    // handleDrop already cleared this on a successful drop, so this is a no-op then.
+    setDragIndex(null);
+    setDropIndex(null);
   }
 
   useLayoutEffect(() => {
@@ -122,7 +167,14 @@ export function Ladder({ troop, arrangement, selected, playing, onSelect }: Ladd
             ape={ape}
             selected={selected === i}
             disabled={!playing}
+            dragging={dragIndex === i}
+            dropTarget={dropIndex === i}
             onSelect={() => handleSelect(i)}
+            onDragStart={(e) => handleDragStart(i, e)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(i, e)}
+            onDragLeave={() => handleDragLeave(i)}
+            onDrop={(e) => handleDrop(i, e)}
           />
         );
       })}
