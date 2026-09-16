@@ -53,9 +53,9 @@
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 0.8rem;
-  color: var(--mist);
+  color: #000;
 }
 
 .some {
-  color: var(--banana);
+  color: #000;
 }
