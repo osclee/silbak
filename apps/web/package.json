@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "icons": "node scripts/render-icons.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "echo \"no lint configured yet\""
   },
