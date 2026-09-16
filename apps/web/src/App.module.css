@@ -38,3 +38,15 @@
   color: var(--moss);
   opacity: 0.6;
 }
+
+/* Underlined rather than recoloured: the footer is already at 0.6 opacity, and
+   at 0.7rem a colour shift alone is not a reliable affordance. */
+.footerLink {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footerLink:hover {
+  color: var(--bark);
+}
