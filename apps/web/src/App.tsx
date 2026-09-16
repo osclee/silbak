@@ -45,8 +45,20 @@ export function App() {
           ) : null}
         </Routes>
       </ErrorBoundary>
+      {/* The byline was a plain-text mailto. On a public domain that address is
+          harvested within days of the first crawl, so the name carries the link
+          instead — same way to reach a human, nothing for a scraper to lift. */}
       <footer className={styles.footer}>
-        &copy; Oscar Lee 2026 &middot; oscar.h.lee@gmail.com
+        &copy;{" "}
+        <a
+          className={styles.footerLink}
+          href="https://www.linkedin.com/in/ohlee/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Oscar Lee
+        </a>{" "}
+        2026
       </footer>
     </div>
   );

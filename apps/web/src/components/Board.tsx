@@ -37,18 +37,31 @@ export function Board({ dateHeader }: BoardProps) {
   return (
     <div className={styles.board}>
       <header className={styles.header}>
+        {/* "Mikeno" is a Virunga peak, not an institution — the same register as
+            the ape names (Virunga, Mgahinga). It replaces "Karisoke", which is
+            the Dian Fossey Gorilla Fund's real research centre: fine as private
+            flavour, but on a public domain "Karisoke observation log" reads as
+            a claim of affiliation nobody granted. The field station is
+            fictional and should stay that way. */}
         <span className={styles.eyebrow}>
-          Karisoke observation log · Troop #{puzzle.number}
+          Mikeno observation log · Troop #{puzzle.number}
           {dateHeader ? ` · ${dateHeader}` : ""}
         </span>
         <h1 className={styles.title}>
           <span className={styles.titleLight}>SIL</span>
           <span className={styles.titleAccent}>BAK</span>
         </h1>
+        {/* Six lines of rules on a phone pushed the ladder most of a screen
+            down. Tightened to the two things a first-timer cannot play without
+            — what the rungs mean and what the feedback is — with the trait
+            caveat held back to wide viewports, where the room is free. Nothing
+            is lost: /about carries all of it, and the ledger restates the
+            silverback/omega ends directly under the board. */}
         <p className={styles.rules}>
-          Six apes, one hierarchy — rung 1 is the silverback, rung 6 the omega. Tap two to swap them,
-          then submit. After each guess the troop tells you <em>how many</em> apes stand on their true
-          rung — not which ones. Traits tell you something, but not everything.
+          Six apes, one hierarchy — rung 1 is the silverback, rung 6 the omega. Tap two to swap, then
+          submit: each guess tells you <em>how many</em> apes stand on their true rung, never which
+          ones.
+          <span className={styles.rulesWide}> Traits tell you something, but not everything.</span>
         </p>
       </header>
 

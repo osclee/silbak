@@ -93,6 +93,16 @@
   white-space: nowrap;
 }
 
+/* The narrow-viewport twin of .rank — see Rung.tsx. Hidden above 480px. */
+.rankCompact {
+  display: none;
+  font-family: var(--font-mono);
+  color: var(--mist);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .portrait {
   display: flex;
   align-items: center;
@@ -133,4 +143,78 @@
   color: var(--mist);
   white-space: normal;
   overflow-wrap: break-word;
+}
+
+/* Width-as-a-style — see the comment in Rung.tsx. 0.4em a side reproduces the
+   " · " the literal string used to render. */
+.sep {
+  padding: 0 0.4em;
+}
+
+/* ---------------------------------------------------------------------------
+   Narrow viewports.
+
+   The problem this solves, measured at 390x664 before the change: the first
+   rung started at y=471 and Submit sat at y=1052 on a 664px viewport — a game
+   about comparing six things showed neither the six things nor the button to
+   commit them. Rungs were also 82-95px and ragged, because the 12ch rank
+   column squeezed the trait line into three and four wraps.
+
+   Three levers, in order of how much they give back:
+     1. the rank column: 12ch -> 2.5ch, by swapping the word badge for the
+        numeral (Rung.tsx). ~70px of width back, which is what lets the trait
+        line sit on one row.
+     2. the portrait: 56px -> 44px. DESIGN.md §6 sets 46px as the floor where
+        silvering and build still read, and /dev/apes renders that size for
+        exactly this check.
+     3. vertical padding: --space-3 -> --space-2.
+
+   Together those take a rung from ~82px to ~62px, so six rungs plus the gaps
+   plus Submit come to ~500px and fit one phone viewport with room to spare.
+   --------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .rung {
+    grid-template-columns: 2.5ch auto 1fr;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .rank {
+    display: none;
+  }
+
+  .rankCompact {
+    display: block;
+  }
+
+  .portrait {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* ApeGlyph writes width/height attributes from its `size` prop; the viewBox
+     is 100x100, so letting CSS win here rescales the whole glyph cleanly
+     rather than cropping it. */
+  .portrait svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .name {
+    font-size: 0.95rem;
+  }
+
+  /* 0.68rem with the separators tightened to 0.12em keeps the longest trait
+     string in the game ("subadult·slight·no silver·scarred") on one line at
+     375px. Kept wrapping rather than ellipsis on purpose: every one of these
+     words is a clue, and silently truncating one would remove information the
+     puzzle depends on. */
+  .traits {
+    font-size: 0.68rem;
+    letter-spacing: -0.01em;
+  }
+
+  .sep {
+    padding: 0 0.22em;
+  }
 }

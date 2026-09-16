@@ -1,8 +1,20 @@
-@import "@fontsource/ibm-plex-sans-condensed/700.css";
-@import "@fontsource/ibm-plex-sans/400.css";
-@import "@fontsource/ibm-plex-sans/500.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
+/* Latin subsets only, explicitly.
+ *
+ * The unqualified `@fontsource/<family>/400.css` entry point pulls *every*
+ * subset the family ships — Cyrillic, Greek, Vietnamese, latin-ext — which put
+ * 50 font files and 591KB into a 940KB deploy for a game whose entire text is
+ * English ape names and English rules. The `latin-` entry points are the same
+ * faces with the other `@font-face` blocks left out.
+ *
+ * If Silbak is ever localised, this is the line that has to change first:
+ * switch the affected families back to the unqualified import (or add the
+ * specific subset) rather than leaving the text to fall back to a system face
+ * mid-word. */
+@import "@fontsource/ibm-plex-sans-condensed/latin-700.css";
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
 @import "./tokens.css";
 
 *,
