@@ -1,7 +1,9 @@
 .notes {
   padding: var(--space-4);
   background: var(--card);
+  border: 1px solid var(--forest);
   border-radius: var(--radius);
+  box-shadow: 0 var(--relief-lift) 0 var(--relief-edge-card);
 }
 
 .header {
@@ -14,6 +16,19 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--mist);
+}
+
+/* The panel's own nameplate, cut like the wordmark. It moves off the mono
+   utility face on purpose: DESIGN.md §6's split is "data is mono, voice is
+   sans", and "Field notes" is the panel announcing itself, not a measurement.
+   The observation count beside it stays mono, because that *is* a measurement. */
+.heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  color: var(--paper);
+  text-shadow: var(--relief-split);
 }
 
 .list {

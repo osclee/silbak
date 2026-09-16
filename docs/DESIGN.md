@@ -2,8 +2,10 @@
 
 > A daily deduction game. Rank six apes in a gorilla troop from silverback to omega in six guesses.
 
-Status: draft v0.12 · Owner: Oz · Last updated: 2026-09-15
+Status: draft v0.13 · Owner: Oz · Last updated: 2026-09-16
 
+> **v0.13 changelog:** the SILBAK wordmark's construction — hard unblurred offsets, warm on one side and cool on the other, an ink stroke on the accent half — became a system the whole board is built from, instead of a one-off on the title. Field notes, the rungs, the verdict strip, the ledger and the attempt history are now inked and extruded blocks; the ape names and the panel nameplates carry the lettering's split. Nothing about play changed. Two contrast defects on the attempt history were fixed in passing: the guess number was `--mist` (a dark-panel token) sitting on the `--paper` page ground, and the count badge was hardcoded `#000` on `--bark` in both branches, which silently contradicted the rule its own comment states — it is `--banana` for a non-zero count and `--mist` for a zero, as documented. See §6, "Relief".
+>
 > **v0.12 changelog:** the share grid went from a count bar to a positional map — each row now shows banana/rock at the rung it actually landed on (`gradeMask` in `grade.ts`), not `exact` bananas left-packed. This is a deliberate reversal of the v0.11 "row is only a count" rule, made with the leak it reopens fully priced in: because everyone solves the same daily puzzle and the trait-obvious first guess is right often enough to be the taught opening move (`NOISE`, §4), a positional row can hand a friend who hasn't played yet the exact placement of every rung their own first guess would also land on — not a vague hint, real solution content, for free. Accepted anyway because a per-guess reveal only pays off for a viewer who then guesses that exact row's arrangement, and because the grid feeling like a fingerprint of *your* guesses (the thing Wordle's grid has and a left-packed bar doesn't) was judged worth that bounded, guess-1-concentrated risk. In-game feedback is unchanged — still `grade()`'s bare count, never a map; only the already-finished share artifact went positional. See §5.
 >
 > **v0.11 changelog:** the difficulty rework (`docs/DIFFICULTY-2026-09-13.md`, all three parts shipped together as engine v3). (1) **Feedback is a count, not a map**: after a guess the troop says how many apes stand on their true rung — never which. Per-rung binary feedback was measured at ~4 bits a guess against a ~7-bit puzzle, which made nearly every day a two-guess game no matter what the clues did; a count is the only feedback rule measured to move a careful solver past three guesses and produce a real Monday→Saturday curve. The board gained a player-kept ape × rung **ledger** (✗/✓) because elimination is now inferential. (2) **Trait-quantified clues** ("every elder outranks every subadult") join the named ones, `between` and the extreme `count` clues were reworded, every clue set must carry a relational clue, and the weekend bands were rebuilt with a cap on the dominance threshold — Friday went from one clue-kind signature to 26. (3) **Par**: each weekday carries an expected guess count; the share line reads `3/6 · par 3`, a one-guess solve earns 🥇, and the result card shows "vs par this month". See §2, §4, §5, §7 and §9.6.
@@ -281,6 +283,12 @@ The world is still a primatology field station in montane cloud forest, not a zo
 --fur-light #5A4D44   portrait lit fur: hump top, crown, forearm and shin bands
 --skin      #5C5654   portrait bare skin: face, ear, knuckle pad, sole
 --silver    #C2BEB6   portrait silver: saddle, flecks, elder greying
+
+--relief-edge-card  #245631   extruded side of a --card block (panels, rungs, the verdict strip)
+--relief-edge-bark  #1A502A   extruded side of a --bark block (ledger keys, history chips)
+--relief-edge-moss  #2A2318   extruded side of the selected rung's --moss surface
+--relief-lift        4px      how far a panel-scale block stands off the page
+--relief-lift-sm     2px      the same for a key- or chip-scale block
 ```
 
 The five `--fur*`/`--skin`/`--silver` tokens are the portrait's and nothing else's (v0.6). They exist so the gorilla can be a gorilla-colored gorilla without the page's greens having to bend around it. One caveat is load-bearing: `--silver` is luminance-matched to `--rock`, the disc the portrait sits on (~1:1). Silver must therefore never reach the silhouette edge unbounded — the portrait keeps a `--fur-deep` outline between any silver and the frame (see Portraits).
@@ -288,6 +296,26 @@ The five `--fur*`/`--skin`/`--silver` tokens are the portrait's and nothing else
 `--sky` (`#7FA8C9`, formerly "ranks higher") was removed in v0.2 — it has no remaining use now that feedback is binary.
 
 `--banana` is reserved. It marks correctness and nothing else — not buttons that aren't the primary action, not decoration, not hover states, not selection. (The focus ring used to borrow it; that stopped in v0.4 — see below. The selected rung's border was still borrowing it up to v0.8 — see next.)
+
+### Relief: the wordmark's cut, applied to the board (v0.13)
+
+The SILBAK wordmark was, until v0.13, the only thing on the page built this way: hard unblurred offsets, warm (`--blood`) on one side and cool (`--bark`) on the other, with an ink stroke on the accent half. It read as pressed or printed rather than typed, and nothing else on the board did — the panels under it were flat fills with a radius, so the title looked like a logo dropped onto an unrelated document.
+
+The system generalises that cut in two halves, both in `tokens.css`:
+
+- **`--relief-split`** is the lettering, for display-role text: the ape name on a rung, and the nameplate on a panel (`Field notes`, `Ledger`). **`--relief-split-page`** is the same gesture at the wordmark's 2px scale.
+- **`--relief-edge-*` / `--relief-lift`** is the block equivalent — a solid, unblurred drop under every panel, rung, ledger key and history chip, plus a 1px `--forest` outline. A block gets a visible *side*, so the board reads as stacked cards rather than as tinted regions of one surface.
+
+Four rules are load-bearing, and three of them are places this can go wrong:
+
+- **The cool half of the split changes with the ground underneath.** `--bark` reads against `--paper`, which is where the wordmark sits; on the green panels it is within a few points of the panel colour and the cool edge simply vanishes, so `--forest` does that job there. This is the same two-tokens-for-one-job split that `--mist`/`--moss` already documents above, arriving from a different direction.
+- **Never `--banana`.** The wordmark may use it — it *is* the mark. A panel may not: a gold edge under every card is exactly the decoration the reservation above exists to prevent, and it would make the "correct" signal one more gold thing among many.
+- **Never a blur.** A blurred shadow is a different material language and goes to mush at the sizes the board actually renders. The one blurred shadow left is `Rung.module.css`'s `.lifted`, and it means something specific — this rung is off the ladder, mid-flight — which only works while it is the only soft edge on screen.
+- **Every state that takes over `box-shadow` must re-state the drop.** The rung has four (`.selected`, `.lifted`, `.dropTarget`, plus the base), and `box-shadow` does not cascade per-layer: a state that sets only its own ring drops the card flat onto the page for exactly as long as that state lasts. `.selected` also needs `--relief-edge-moss` rather than the card edge, because its surface is `--moss`.
+
+Two knock-on measurements, both of which had to be corrected rather than accepted: the ladder gap went `--space-2` → `--space-3` and the ledger's row gap 4px → 6px, because in both cases the extrusion ate half the gap and the stack fused into one mass. **Any future change to `--relief-lift` has to be re-checked against the gaps around the blocks it lifts**, not just against the blocks themselves.
+
+Finally, a block with a side can be pressed, so the ledger key is: on `:active` it travels down exactly `--relief-lift-sm` and loses its shadow, which reads as the key bottoming out. The rung deliberately does *not* do this — it already owns `transform` for selection (`translateX(10px)`) and for the swap flight, and a press transform would fight both.
 
 ### The selected rung (v0.8)
 
@@ -320,11 +348,13 @@ One superfamily, three roles. IBM Plex is chosen because institutional research 
 
 | Role | Face | Use |
 |---|---|---|
-| Display | IBM Plex Sans Condensed 700 | Title, ape names, result headline |
+| Display | IBM Plex Sans Condensed 700 | Title, ape names, result headline, panel nameplates ("Field notes", "Ledger") |
 | Body | IBM Plex Sans 400/500 | Field notes, prose |
 | Utility | IBM Plex Mono 400/500 | Rank labels, traits, counts, all data |
 
 Everything that is *data* is mono. Everything that is *voice* is sans. That split is the whole typographic idea; keep it clean.
+
+v0.13 moved the panel nameplates from the mono utility face to display, and the test is that same split, not a preference: "Field notes" and "Ledger" are the panel announcing itself, which is voice. The things sitting beside them on the same header row — the observation count, the ✗/✓ tap legend — stayed mono, because a count is a measurement and a legend is the key to a notation. Where a header holds both, it now holds both faces.
 
 ### Portraits
 

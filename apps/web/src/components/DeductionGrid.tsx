@@ -32,7 +32,9 @@ export function DeductionGrid({ troop, marks, playing, onCycle }: DeductionGridP
   return (
     <section className={styles.ledger} aria-labelledby="ledger-heading">
       <div className={styles.header}>
-        <span id="ledger-heading">Ledger</span>
+        <span id="ledger-heading" className={styles.heading}>
+          Ledger
+        </span>
         <span>tap: ✗ ruled out · ✓ confirmed</span>
       </div>
       <div className={styles.grid} role="grid" aria-label="Ape by rung ledger" aria-readonly={!playing}>

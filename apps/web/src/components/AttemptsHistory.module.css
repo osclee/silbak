@@ -10,12 +10,17 @@
   gap: var(--space-2);
 }
 
+/* --moss, not --mist: this label is the only text in the component sitting
+   directly on the --paper page ground rather than on a green chip, and that is
+   exactly the split the two tokens exist for (DESIGN.md §6, "Why there are two
+   secondary text tokens now"). In --mist it was light-green-on-cream and the
+   guess numbers were effectively invisible. */
 .rowLabel {
   flex-shrink: 0;
   width: 1.5rem;
   font-family: var(--font-mono);
   font-size: 0.7rem;
-  color: var(--mist);
+  color: var(--moss);
 }
 
 .cells {
@@ -26,11 +31,16 @@
   min-width: 0;
 }
 
+/* Each past arrangement is a row of the same inked, extruded blocks the ledger
+   keys and the rungs are, at chip scale — the history reads as the ladder's
+   own record rather than as a separate legend pasted underneath it. */
 .cell {
   min-width: 0;
   padding: var(--space-2) 2px;
   background: var(--bark);
+  border: 1px solid var(--forest);
   border-radius: var(--radius-sm);
+  box-shadow: 0 var(--relief-lift-sm) 0 var(--relief-edge-bark);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -48,14 +58,16 @@
   min-width: 3.2ch;
   padding: var(--space-2) var(--space-1);
   background: var(--bark);
+  border: 1px solid var(--forest);
   border-radius: var(--radius-sm);
+  box-shadow: 0 var(--relief-lift-sm) 0 var(--relief-edge-bark);
   text-align: center;
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 0.8rem;
-  color: #000;
+  color: var(--mist);
 }
 
 .some {
-  color: #000;
+  color: var(--banana);
 }

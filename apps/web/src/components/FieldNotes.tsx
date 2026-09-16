@@ -9,7 +9,9 @@ export function FieldNotes({ clues }: FieldNotesProps) {
   return (
     <section className={styles.notes} aria-labelledby="field-notes-heading">
       <div className={styles.header}>
-        <span id="field-notes-heading">Field notes</span>
+        <span id="field-notes-heading" className={styles.heading}>
+          Field notes
+        </span>
         <span>
           {clues.length} observation{clues.length === 1 ? "" : "s"}
         </span>
