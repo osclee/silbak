@@ -83,9 +83,15 @@
   cursor: default;
 }
 
+/* The gap is not cosmetic. These are two independent strings that both wrap;
+   with `justify-content: space-between` and nothing holding them apart, at
+   390px they each wrapped to two lines and met in the middle, rendering as
+   "6 GUESSES LEFT · PAR TAP OR DRAG AN APE TO MOVE / 4 IT" — one garbled
+   sentence out of two sensible ones. */
 .hintRow {
   display: flex;
   justify-content: space-between;
+  gap: var(--space-4);
   font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.03em;
@@ -143,4 +149,42 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   Narrow viewports. The companion to the rung rule in Rung.module.css: that
+   one shortens each rung, this one shortens everything stacked above them, so
+   the ladder is reachable in one short scroll instead of most of a screen.
+
+   The header is the only block here that can give ground — the field notes are
+   the puzzle and the ladder is the board. The wordmark drops a size and the
+   rules paragraph drops to 0.875rem; the rules are stated in full on /about
+   and restated under the ledger, so this line is a reminder, not the manual.
+   --------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .board {
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .rules {
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
+  .rulesWide {
+    display: none;
+  }
+
+  /* Stacked, not side by side: the count is what the player checks and the
+     hint is what they ignore after the first guess, so they get separate
+     lines rather than competing for a 358px row. */
+  .hintRow {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
 }
