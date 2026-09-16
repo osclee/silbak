@@ -14,7 +14,12 @@
    directly on the --paper page ground rather than on a green chip, and that is
    exactly the split the two tokens exist for (DESIGN.md §6, "Why there are two
    secondary text tokens now"). In --mist it was light-green-on-cream and the
-   guess numbers were effectively invisible. */
+   guess numbers were effectively invisible.
+
+   --moss rather than the plain #000 that 4456f15 set on master: both fix the
+   invisibility, and the two landed in parallel, so the choice was made by hand
+   when the branches met (874eec9). --moss is the token §6 already defines for
+   this exact position; #000 is not in the palette at all. */
 .rowLabel {
   flex-shrink: 0;
   width: 1.5rem;
