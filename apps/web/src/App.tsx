@@ -45,6 +45,9 @@ export function App() {
           ) : null}
         </Routes>
       </ErrorBoundary>
+      <footer className={styles.footer}>
+        &copy; Oscar Lee 2026 &middot; oscar.h.lee@gmail.com
+      </footer>
     </div>
   );
 }
