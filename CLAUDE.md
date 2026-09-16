@@ -37,6 +37,8 @@ This is the harness for blind CLI-based playtesting (never prints the solution) 
 
 There is no dev server managed outside the Browser-pane tooling — `.claude/launch.json` defines the `silbak-web` config (`pnpm --filter @silbak/web dev` on port 5173, `autoPort` enabled; `vite.config.ts` honors a `PORT` env var so a second session can get a free port when 5173 is taken) that preview tooling uses to start it.
 
+**The favicon is the portrait, not a copy of it:** `apps/web/public/favicon.svg` is one rung cropped to its `--rock` disc, with every path lifted verbatim from `ApeGlyph.tsx` in that file's 100x100 glyph space. Nothing enforces the correspondence, so re-crop it deliberately when the portrait geometry moves — see `docs/DESIGN.md` §6, "The mark". The committed PNG fallbacks are rasterised from it by `pnpm --filter @silbak/web icons` (Playwright, already a root devDependency); re-run that after editing the SVG.
+
 **Checking the ape portraits:** `/dev/apes` (mounted only under `import.meta.env.DEV`, route in `App.tsx`, page in `src/routes/DevApes.tsx`) renders every valid trait combination at 56px and 46px on the rung's `--rock` disc. It is the only test `ApeGlyph.tsx` has — eyeball the whole matrix after touching its trait tables or geometry.
 
 ## Architecture

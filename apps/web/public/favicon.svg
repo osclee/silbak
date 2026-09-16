@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Silbak</title>
+  <!--
+    The Silbak mark: one rung, cropped to its portrait.
+
+    This is not a lookalike drawn to match the cards — it *is* the card drawing. Every
+    path, transform and shading mass below is lifted verbatim from
+    apps/web/src/components/ApeGlyph.tsx and used in that file's 100x100 glyph space,
+    and the framing is the rung's framing: Rung.module.css puts a 56px glyph inside a
+    56px --rock circle with `overflow: hidden`, so here a 100-unit glyph box is placed
+    over a 60-unit disc by one `translate(2 2) scale(0.6)`. The coordinates inside that
+    group are untouched. If ApeGlyph's geometry changes, the paths can be copied across
+    mechanically rather than redrawn by eye.
+
+    The three-value ladder is the rung's too: --card panel, --rock portrait disc,
+    charcoal ape. Tokens are inlined as literals with the token named in a comment —
+    an SVG favicon is a standalone document and cannot see the page's tokens.css.
+
+    The ape is **elder / solid / full silver, no scar** — the troop's silverback, which
+    is what the name is. Why that tuple and not another:
+
+      - **Full silver** is the mark's whole read at small sizes. It is the only large
+        light mass on the animal, so where an all-charcoal ape collapses into one blob
+        against --rock below ~32px, the saddle keeps a two-tone shape down to ~24px.
+        It is safe here for the same reason it is safe on a rung: DESIGN.md §6 forbids
+        --silver touching --rock (they are luminance-matched), and the saddle is clipped
+        to the torso with a --fur-deep rim re-stroked along the back after it. Nothing
+        silver comes within 10 glyph units of the disc edge. A tighter crop was tried
+        first and rejected for exactly this — it ran the saddle off the disc into the
+        frame.
+      - **Elder** carries the tallest sagittal crest, which is the silhouette cue that
+        survives the smallest raster, and its greying puts --silver on the face too.
+      - **No scar.** The --blood stroke is two glyph units wide; below 48px it is one
+        stray warm pixel on the muzzle and reads as a rendering artifact.
+
+    A head-and-shoulders crop was the other candidate and lost: the knuckle-walking
+    quadruped profile is the silhouette people recognise as a gorilla (DESIGN.md §6),
+    and cropping to the head throws away the long forelimb and the shoulder hump that
+    do that work, without buying back enough detail to be worth it.
+  -->
+  <defs>
+    <clipPath id="disc">
+      <circle cx="32" cy="32" r="30" />
+    </clipPath>
+    <!-- Part clips live in each part's own space and are referenced from inside that
+         part's transformed group, so they follow the trait transforms — ApeGlyph's
+         arrangement, kept so the two files stay diffable. -->
+    <clipPath id="torso">
+      <path d="M24 56 C23 44 29 30 46 25 C60 26 73 31 81 40 C88 47 91 53 90 60 C88 66 78 69 65 69 C48 69 32 66 27 61 C24 59 24 58 24 56 Z" />
+      <ellipse cx="52" cy="30" rx="13" ry="6" />
+    </clipPath>
+    <clipPath id="rim">
+      <rect x="0" y="0" width="100" height="58" />
+    </clipPath>
+    <!-- "Everything except this shape", so the inner rim traces the *union* of torso
+         and hump and never the part of either edge buried inside the other. -->
+    <clipPath id="nohump">
+      <path d="M-50 -50 H150 V150 H-50 Z M39 30 a13 6 0 1 0 26 0 a13 6 0 1 0 -26 0 Z" clip-rule="evenodd" />
+    </clipPath>
+    <clipPath id="notorso">
+      <path d="M-50 -50 H150 V150 H-50 Z M24 56 C23 44 29 30 46 25 C60 26 73 31 81 40 C88 47 91 53 90 60 C88 66 78 69 65 69 C48 69 32 66 27 61 C24 59 24 58 24 56 Z" clip-rule="evenodd" />
+    </clipPath>
+    <clipPath id="fore">
+      <path d="M26 44 C24 56 24 70 25 79 C25 84 30 87 36 87 C42 87 45 84 45 79 C46 66 46 54 45 44 Z" />
+    </clipPath>
+    <clipPath id="hind">
+      <path d="M58 48 C55 60 55 70 56 77 C54 78 53 80 53 83 C53 86 57 87 64 87 C71 87 76 86 76 83 C76 79 74 77 72 75 C75 64 76 56 76 48 Z" />
+    </clipPath>
+    <clipPath id="head">
+      <path d="M9.73 28 C9.73 0.67 42.27 0.67 42.27 28 Z" />
+      <path d="M40 30 C41 21 34 14 24 15 C15 16 10 22 10 31 C10 38 15 43 24 44 C33 45 40 39 40 30 Z" />
+      <path d="M20 33 C12 34 5 39 6 44 C7 49 13 51 19 50 C26 49 28 43 27 37 Z" />
+    </clipPath>
+    <!-- --silver, falling off down the flank. -->
+    <linearGradient id="silver" gradientUnits="userSpaceOnUse" x1="0" y1="18" x2="0" y2="66">
+      <stop offset="0" stop-color="#c2beb6" stop-opacity="1" />
+      <stop offset="1" stop-color="#c2beb6" stop-opacity="0.72" />
+    </linearGradient>
+  </defs>
+
+  <!-- The rung panel (--card) carrying its portrait disc (--rock). -->
+  <rect id="field" x="0" y="0" width="64" height="64" rx="13" fill="#2a7744" />
+  <circle cx="32" cy="32" r="30" fill="#e3c08a" />
+
+  <g clip-path="url(#disc)">
+    <g transform="translate(2 2) scale(0.6)">
+      <!-- Far-side limbs: outlined like everything else, then washed darker so they
+           recede behind the body. -->
+      <g fill="#2e2622" stroke="#1a1614" stroke-width="4" stroke-linejoin="round">
+        <path d="M36 52 C34 62 34 72 35 80 C35 84 38 86 42 86 C46 86 49 84 49 80 C50 70 50 60 49 52 Z" />
+        <path d="M70 54 C68 64 68 72 69 78 C67 79 66 81 66 83 C66 86 70 87 76 87 C82 87 85 86 85 83 C85 80 83 78 81 76 C84 66 85 60 85 54 Z" />
+      </g>
+      <g fill="#1a1614" opacity="0.5">
+        <path d="M36 52 C34 62 34 72 35 80 C35 84 38 86 42 86 C46 86 49 84 49 80 C50 70 50 60 49 52 Z" />
+        <path d="M70 54 C68 64 68 72 69 78 C67 79 66 81 66 83 C66 86 70 87 76 87 C82 87 85 86 85 83 C85 80 83 78 81 76 C84 66 85 60 85 54 Z" />
+      </g>
+
+      <!-- Ink underlay: torso + hump, near limbs and head, each filled AND stroked in
+           --fur-deep. The union of the underlays is the silhouette's one outline, so no
+           contour is ever drawn where a limb is buried in the chest. -->
+      <g fill="#1a1614" stroke="#1a1614" stroke-width="4" stroke-linejoin="round">
+        <path d="M24 56 C23 44 29 30 46 25 C60 26 73 31 81 40 C88 47 91 53 90 60 C88 66 78 69 65 69 C48 69 32 66 27 61 C24 59 24 58 24 56 Z" />
+        <ellipse cx="52" cy="30" rx="13" ry="6" />
+        <path d="M58 48 C55 60 55 70 56 77 C54 78 53 80 53 83 C53 86 57 87 64 87 C71 87 76 86 76 83 C76 79 74 77 72 75 C75 64 76 56 76 48 Z" />
+        <path d="M26 44 C24 56 24 70 25 79 C25 84 30 87 36 87 C42 87 45 84 45 79 C46 66 46 54 45 44 Z" />
+        <g transform="translate(40 30) scale(0.913 0.83) translate(-40 -30)">
+          <path d="M9.73 28 C9.73 0.67 42.27 0.67 42.27 28 Z" />
+          <path d="M40 30 C41 21 34 14 24 15 C15 16 10 22 10 31 C10 38 15 43 24 44 C33 45 40 39 40 30 Z" />
+          <path d="M20 33 C12 34 5 39 6 44 C7 49 13 51 19 50 C26 49 28 43 27 37 Z" />
+        </g>
+      </g>
+      <!-- Base fur (--fur) over it, covering every interior seam. -->
+      <g fill="#2e2622">
+        <path d="M24 56 C23 44 29 30 46 25 C60 26 73 31 81 40 C88 47 91 53 90 60 C88 66 78 69 65 69 C48 69 32 66 27 61 C24 59 24 58 24 56 Z" />
+        <ellipse cx="52" cy="30" rx="13" ry="6" />
+        <path d="M58 48 C55 60 55 70 56 77 C54 78 53 80 53 83 C53 86 57 87 64 87 C71 87 76 86 76 83 C76 79 74 77 72 75 C75 64 76 56 76 48 Z" />
+        <path d="M26 44 C24 56 24 70 25 79 C25 84 30 87 36 87 C42 87 45 84 45 79 C46 66 46 54 45 44 Z" />
+        <g transform="translate(40 30) scale(0.913 0.83) translate(-40 -30)">
+          <path d="M9.73 28 C9.73 0.67 42.27 0.67 42.27 28 Z" />
+          <path d="M40 30 C41 21 34 14 24 15 C15 16 10 22 10 31 C10 38 15 43 24 44 C33 45 40 39 40 30 Z" />
+          <path d="M20 33 C12 34 5 39 6 44 C7 49 13 51 19 50 C26 49 28 43 27 37 Z" />
+        </g>
+      </g>
+
+      <!-- Torso: belly shadow, jaw shadow, hump/back/rump highlights (--fur-deep and
+           --fur-light), then the saddle, its fur flecks, and the inner --fur-deep rim
+           that keeps --silver off the --rock frame. Lit from the upper left. -->
+      <g clip-path="url(#torso)">
+        <path d="M20 54 C34 63 62 66 94 55 L94 80 L20 80 Z" fill="#1a1614" opacity="0.45" />
+        <ellipse cx="37" cy="46" rx="12" ry="7" fill="#1a1614" opacity="0.35" />
+        <ellipse cx="48" cy="26.5" rx="9" ry="5.1" fill="#5a4d44" opacity="0.8" />
+        <path d="M56 28.5 C66 30 76 35 83 41" stroke="#5a4d44" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.5" />
+        <ellipse cx="84" cy="47" rx="5" ry="6" fill="#5a4d44" opacity="0.45" />
+        <!-- The saddle at `full` extent (0.92): withers to rump, edge scalloped so it
+             reads as tufts of fur rather than a waterline across the body. -->
+        <path fill="url(#silver)" d="M34 6 Q32.9 8.9 35.2 11.1 Q34.1 14.0 36.4 16.1 Q35.3 19.1 37.6 21.2 Q36.5 24.1 38.8 26.3 Q37.7 29.2 40.0 31.4 Q38.9 34.3 41.2 36.4 Q40.1 39.4 42.4 41.5 Q41.3 44.4 43.6 46.6 Q42.5 49.5 44.8 51.7 Q43.7 54.6 46.0 56.7 Q44.9 59.7 47.2 61.8 Q49.7 63.5 52.2 61.8 Q54.7 63.5 57.2 61.8 Q59.7 63.5 62.3 61.8 Q64.8 63.5 67.3 61.8 Q69.8 63.5 72.3 61.8 Q74.8 63.5 77.3 61.8 Q79.8 63.5 82.3 61.8 Q85.0 61.5 85.3 58.8 Q88.0 58.5 88.3 55.8 Q90.0 53.2 88.3 50.6 Q90.0 48.0 88.3 45.4 Q90.0 42.9 88.3 40.3 Q90.0 37.7 88.3 35.1 Q90.0 32.5 88.3 29.9 Q90.0 27.3 88.3 24.7 Q90.0 22.1 88.3 19.5 Q90.0 16.9 88.3 14.4 Q90.0 11.8 88.3 9.2 Q90.0 6.6 88.3 4.0 Z" />
+        <g fill="#c2beb6" opacity="0.8">
+          <circle cx="85.3" cy="66.7" r="1.15" />
+          <circle cx="76.3" cy="56.8" r="1.06" />
+          <circle cx="47.7" cy="57.1" r="1.29" />
+          <circle cx="56.3" cy="56.1" r="1.01" />
+          <circle cx="64.5" cy="65.9" r="0.84" />
+          <circle cx="89.7" cy="56.7" r="0.88" />
+          <circle cx="79.7" cy="52.7" r="1.20" />
+          <circle cx="87.4" cy="59.6" r="0.77" />
+        </g>
+        <g clip-path="url(#rim)" fill="none" stroke="#1a1614" stroke-width="3">
+          <path d="M24 56 C23 44 29 30 46 25 C60 26 73 31 81 40 C88 47 91 53 90 60 C88 66 78 69 65 69 C48 69 32 66 27 61 C24 59 24 58 24 56 Z" clip-path="url(#nohump)" />
+          <path d="M39 30 a13 6 0 1 0 26 0 a13 6 0 1 0 -26 0 Z" clip-path="url(#notorso)" />
+        </g>
+      </g>
+
+      <!-- Near hind limb: lit shin, shadowed hamstring, the saddle continuing onto the
+           thigh, and a --skin sole. -->
+      <g clip-path="url(#hind)">
+        <path d="M56.5 58 C55.6 64 55.3 71 56 77 L61.5 77 C60.8 71 61 64 62 58 C61 55.5 57.5 55.5 56.5 58 Z" fill="#5a4d44" opacity="0.55" />
+        <path d="M72 46 L80 46 L80 90 L70 90 C75 74 77 62 72 46 Z" fill="#1a1614" opacity="0.4" />
+        <path fill="url(#silver)" opacity="0.9" d="M48 40 L82 40 L82 55 Q79.4 53.5 77.1 55.4 Q74.6 53.9 72.3 55.9 Q69.7 54.4 67.4 56.3 Q64.9 54.8 62.6 56.7 Q60.0 55.2 57.7 57.1 Q55.1 55.7 52.9 57.6 Q50.3 56.1 48.0 58.0 Z" />
+        <ellipse cx="65" cy="85.5" rx="10" ry="2.6" fill="#5c5654" />
+      </g>
+
+      <!-- Near forelimb: lit forearm, shadowed inner edge, --skin knuckle pad. -->
+      <g clip-path="url(#fore)">
+        <path d="M25 54 C24.3 62 24.2 71 25 79 L30.5 79 C29.8 71 29.8 62 30.5 54 C29.5 51.5 26 51.5 25 54 Z" fill="#5a4d44" opacity="0.55" />
+        <path d="M40 40 L50 40 L50 90 L40 90 C44 74 44 58 40 40 Z" fill="#1a1614" opacity="0.4" />
+        <ellipse cx="35" cy="85" rx="9" ry="2.8" fill="#5c5654" />
+        <path d="M30 83.5 L30 86 M35 83 L35 86" stroke="#1a1614" stroke-width="1" opacity="0.6" />
+      </g>
+
+      <!-- Head, drawn last so it sits in front of the shoulder. -->
+      <g transform="translate(40 30) scale(0.913 0.83) translate(-40 -30)">
+        <g clip-path="url(#head)">
+          <!-- Crown highlight, shadow where the head meets the chest, the --skin face
+               mask, then the elder's --silver wash on temple and crest tip. -->
+          <ellipse cx="24" cy="15.1" rx="10" ry="5" fill="#5a4d44" opacity="0.7" />
+          <ellipse cx="39" cy="37" rx="8" ry="8" fill="#1a1614" opacity="0.35" />
+          <path d="M8 31 C13 28.5 20 28.5 25 31.5 C26.5 36 25 41 23 46 C21 50.5 14 52 9 50 C5 48 3.5 42 5 36 Z" fill="#5c5654" />
+          <ellipse cx="32" cy="26" rx="4.5" ry="3" fill="#c2beb6" opacity="0.45" />
+          <ellipse cx="26" cy="10" rx="6" ry="2.5" fill="#c2beb6" opacity="0.5" />
+        </g>
+        <!-- Ear -->
+        <circle cx="36.5" cy="31.5" r="3.2" fill="#5c5654" stroke="#1a1614" stroke-width="1.2" />
+        <circle cx="36.5" cy="31.5" r="1.3" fill="#1a1614" opacity="0.6" />
+        <!-- Brow ridge, heavy, greyed along its top edge. -->
+        <path d="M8 33 C13 29.5 20 29.5 25.5 32" stroke="#1a1614" stroke-width="3" fill="none" stroke-linecap="round" />
+        <path d="M9 32 C14 29 20 29 25 31.5" stroke="#c2beb6" stroke-width="1.4" fill="none" stroke-linecap="round" opacity="0.6" />
+        <!-- Eye, deep-set, with one --paper glint. -->
+        <ellipse cx="14.5" cy="37" rx="2.31" ry="2.1" fill="#1a1614" />
+        <circle cx="13.765" cy="36.265" r="0.798" fill="#fbefd3" opacity="0.9" />
+        <!-- Nostril, mouth, cheek crease. -->
+        <path d="M6.5 42.5 C8.5 41.3 10.5 41.3 12 42.5" stroke="#1a1614" stroke-width="1.7" fill="none" stroke-linecap="round" />
+        <path d="M7 47.5 C11 49.8 16 49.8 20 48.2" stroke="#1a1614" stroke-width="1.6" fill="none" stroke-linecap="round" />
+        <path d="M22.5 39 C23.5 43 23 46 21.5 48.5" stroke="#1a1614" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.55" />
+      </g>
+    </g>
+  </g>
+</svg>

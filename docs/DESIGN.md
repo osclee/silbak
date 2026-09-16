@@ -356,6 +356,23 @@ The engine's gating (juveniles carry at most `flecked`, subadults at most `part-
 
 A player should be able to read a rung before reading its label. Rung portraits render at 56px. If portraits stop being legible at 46px, simplify the silhouette rather than enlarging the glyph.
 
+### The mark: favicon and app icon
+
+The mark is **one rung, cropped to its portrait** — the `--card` panel, the `--rock` disc, and an ape on it, in that three-value ladder. It lives in `apps/web/public/favicon.svg`, and it is not a lookalike: every path, transform and shading mass in it is lifted verbatim from `ApeGlyph.tsx` and used in that file's 100×100 glyph space, with one `translate(2 2) scale(0.6)` doing the framing. That framing is the rung's own — `Rung.module.css` puts a 56px glyph inside a 56px `--rock` circle with `overflow: hidden`, so the icon places a 100-unit glyph box over a 60-unit disc and lets the circle clip the corners exactly as a rung does. A change to `ApeGlyph`'s geometry can therefore be copied across mechanically instead of redrawn by eye; the trade is that nothing enforces it, so the icon has to be re-cropped deliberately when the portrait moves.
+
+The ape is **elder / solid build / full silver / no scar** — the troop's silverback, which is what the name is. Each part of that tuple is doing a job at 16–32px, where an icon actually lives:
+
+- **Full silver** is the entire read at small sizes. It is the only large light mass on the animal, so where an all-charcoal ape collapses into one blob against `--rock` below about 32px, the saddle holds a two-tone shape down to about 24px. It is safe at the icon's scale for the same reason it is safe on a rung: it is clipped to the torso with the `--fur-deep` inner rim re-stroked along the back after it, and nothing silver comes within 10 glyph units of the disc edge.
+- **Elder** carries the tallest sagittal crest, the silhouette cue that survives the smallest raster, and its greying puts `--silver` on the face as well as the back.
+- **No scar.** The `--blood` stroke is two glyph units wide; below 48px it is one stray warm pixel on the muzzle and reads as a rendering artifact rather than a wound.
+
+Two things were tried and rejected, both worth keeping because both look right in the source:
+
+- **A head-and-shoulders crop**, on the usual reasoning that a bust survives small sizes better than a whole animal. It does not, here. The knuckle-walking quadruped profile is the thing people recognise as a gorilla (see Portraits above), and cropping to the head throws away the long forelimb and the shoulder hump that do that work while gaining too little detail to pay for them. The cropped version read as an indistinct dark mass with a grey face; the whole animal reads as a gorilla at 32px.
+- **Carrying the saddle on a tight crop.** Any crop close enough to make the head large runs the saddle off the disc edge, where `--silver` meets `--rock` at the same luminance and simply disappears — the §6 rule above, hit from a direction it was not written for. The full-body framing keeps the saddle wholly inside the disc, which is why it can be the mark's strongest signal instead of its weakest edge.
+
+`favicon.svg` is the source of truth. `favicon-32.png` (the Safari < 16.4 tab fallback) and `apple-touch-icon.png` (iOS home screen — full-bleed and square-cornered, since iOS applies its own mask and composites transparency onto black) are rasterised from it by `pnpm --filter @silbak/web icons` and committed, so a static deploy needs no image toolchain.
+
 ### The canopy scene: a page-level pixel-art backdrop
 
 `CanopyScene.tsx` is a purely decorative layer (`aria-hidden`) mounted once at the app root (`App.tsx`) behind the nav and every route — a nod to 8-bit title-screen framing (blocky foliage, drifting motes, a scanline overlay), reworked into the jungle setting rather than copied wholesale. Deliberately **not** a gate: no click, no route, no loading state — the puzzle is exactly as immediately visible/playable as before, so "learnable in one turn" (§1) still holds.
