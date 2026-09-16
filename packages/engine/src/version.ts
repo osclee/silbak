@@ -7,7 +7,7 @@
  * v2: 6 apes (720 permutations) instead of 5 (120) — see troop.ts's
  * TROOP_SIZE comment and DESIGN.md §9.2 for why. */
 export const ENGINE_VERSION = 3;
-export const EPOCH = "2026-01-01";
+export const EPOCH = "2026-09-16";
 
 function daysBetween(a: string, b: string): number {
   const msA = Date.parse(`${a}T00:00:00Z`);
