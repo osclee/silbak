@@ -30,16 +30,19 @@
   line-height: 1;
 }
 
+/* The wordmark is where the relief system is defined by example — it sits on
+   the --paper page ground, so it takes the --bark-cooled variant of the split.
+   Everything on a green panel takes --relief-split instead; see tokens.css. */
 .titleLight {
   color: var(--forest);
-  text-shadow: 2px 0 var(--blood), -2px 0 var(--bark);
+  text-shadow: var(--relief-split-page);
 }
 
 .titleAccent {
   color: var(--banana);
   -webkit-text-stroke: 1.5px var(--forest);
   paint-order: stroke fill;
-  text-shadow: 2px 0 var(--blood), -2px 0 var(--bark);
+  text-shadow: var(--relief-split-page);
 }
 
 .rules {
@@ -98,7 +101,12 @@
   gap: var(--space-2) var(--space-3);
   padding: var(--space-3) var(--space-4);
   background: var(--card);
+  /* Same relief as the rungs above it and the ledger below — it sits inside
+     the board column, so a flat panel here reads as an unstyled gap in the
+     stack rather than as a different kind of thing. */
+  border: 1px solid var(--forest);
   border-radius: var(--radius);
+  box-shadow: 0 var(--relief-lift) 0 var(--relief-edge-card);
   color: var(--paper);
 }
 

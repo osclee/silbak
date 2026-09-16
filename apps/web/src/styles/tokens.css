@@ -22,6 +22,41 @@
   --skin: #5c5654;
   --silver: #c2beb6;
 
+  /* Relief — the wordmark's lettering, generalised into a system.
+     SILBAK is built from hard, unblurred offsets: a warm --blood edge on one
+     side, a cool edge on the other, and an ink stroke on the accent half.
+     Everything on the board that is a *block* — a panel, a rung, a ledger key,
+     a history chip — carries the same idea one dimension over: a solid drop
+     with no blur, so it reads as a printed block with a visible side rather
+     than a surface floating over the page.
+
+     Two refusals are load-bearing:
+     - No --banana. The wordmark may use it (it *is* the mark); a panel may
+       not — DESIGN.md §6 reserves it for correctness and nothing else, and a
+       gold edge under every card is exactly the decoration that reservation
+       exists to prevent.
+     - No blur. A blurred shadow is a different material language, and it goes
+       to mush at the sizes the board renders at. The letters' edges are hard,
+       so the blocks' are too. (Rung.module.css's .lifted is the one blurred
+       shadow left, and it means something else: mid-flight, off the ladder.)
+
+     The cool half of the split changes with the surface underneath. --bark
+     reads against the --paper page ground, which is where the wordmark sits;
+     on the green panels it is nearly the panel colour, so --forest does that
+     job instead. Same gesture, legible on both grounds. */
+  --relief-split-page: 2px 0 var(--blood), -2px 0 var(--bark);
+  --relief-split: 1px 0 var(--blood), -1px 0 var(--forest);
+
+  /* The extruded side of a block, one per surface it can sit on. Each is its
+     own surface mixed ~45% toward --forest: dark enough to read as a side
+     wall, close enough in hue that it never separates into its own object. */
+  --relief-edge-card: #245631;
+  --relief-edge-bark: #1a502a;
+  --relief-edge-moss: #2a2318;
+
+  --relief-lift: 4px;
+  --relief-lift-sm: 2px;
+
   --font-display: "IBM Plex Sans Condensed", sans-serif;
   --font-body: "IBM Plex Sans", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;

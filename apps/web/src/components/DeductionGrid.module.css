@@ -1,11 +1,17 @@
 .ledger {
   padding: var(--space-4);
   background: var(--card);
+  border: 1px solid var(--forest);
   border-radius: var(--radius);
+  box-shadow: 0 var(--relief-lift) 0 var(--relief-edge-card);
 }
 
+/* Wraps because the nameplate below is a larger face than the mono label it
+   replaced, and at 320px it and the tap legend would otherwise squeeze into
+   each other rather than stack. */
 .header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
   gap: var(--space-2);
@@ -17,10 +23,23 @@
   color: var(--mist);
 }
 
+/* Matches FieldNotes' nameplate exactly — same reasoning there. The tap legend
+   beside it stays mono: it is the key to a notation, i.e. data. */
+.heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  color: var(--paper);
+  text-shadow: var(--relief-split);
+}
+
+/* Row gap is larger than column gap because each cell extrudes 2px downward
+   and a uniform 4px gap left the rows touching. */
 .grid {
   display: grid;
   grid-template-columns: 4.5ch repeat(6, minmax(0, 1fr));
-  gap: 4px;
+  gap: 6px 4px;
 }
 
 /* Rows are semantic only; the cells lay out on the shared grid. */
@@ -54,18 +73,28 @@
   min-height: 44px;
   padding: 0;
   background: var(--bark);
-  border: 1px solid transparent;
+  border: 1px solid var(--forest);
   border-radius: var(--radius-sm);
+  box-shadow: 0 var(--relief-lift-sm) 0 var(--relief-edge-bark);
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
-  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease;
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease, transform var(--motion-fast) ease;
 }
 
 .cell:hover:not(:disabled) {
   border-color: var(--rock);
+}
+
+/* A key with a side is a key that can be pressed, so it is. The cell travels
+   down exactly the height of its own extrusion and loses it, which reads as
+   the key bottoming out rather than as the whole grid shifting. */
+.cell:active:not(:disabled) {
+  transform: translateY(var(--relief-lift-sm));
+  box-shadow: none;
 }
 
 .cell:disabled {
