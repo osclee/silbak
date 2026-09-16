@@ -56,7 +56,45 @@ import styles from "./CanopyScene.module.css";
  * `--bark` with `--forest` shading. These are blends, not new tokens; the
  * palette is unchanged and `--banana` stays out of the scene entirely, per
  * §6's reservation.
+ *
+ * ## Motion: one wind field
+ *
+ * Every primary motion here runs on a single shared gust profile (the
+ * `gust*` keyframes in the stylesheet) at one period, and an element's
+ * *phase* is a function of where it sits on the page: `gustDelay(u)` returns
+ * a negative `animation-delay` that puts an element at horizontal fraction
+ * `u` (0 = left edge, 1 = right) `u * SWEEP` seconds behind the gust front,
+ * so a gust visibly rolls across the scene left to right rather than every
+ * element pulsing in private. Amplitude scales with depth and size; near,
+ * large foliage moves most.
+ *
+ * Trunks, both bough planes and the canopy band additionally share a
+ * whole-forest lean (see `.lean` in the stylesheet) so that a bough's branch
+ * root stays welded to its trunk while the tree it is on moves — that weld is
+ * the point of the whole model, and the thing the first cut lacked.
  */
+
+/** Seconds per gust cycle. Passed to CSS as `--gust-period` so both sides share it. */
+const GUST_PERIOD = 16;
+/** Seconds the gust front takes to cross the page from left edge to right. */
+const SWEEP = 2.6;
+
+/**
+ * Negative `animation-delay` placing an element `lag` seconds behind the gust
+ * front, where `lag` grows with horizontal position (`u`, 0–1) plus any extra
+ * (depth, per-element jitter). Negative so the loop is mid-cycle at first
+ * paint — a positive delay holds the element at its un-animated pose and then
+ * snaps it to the 0% keyframe, which is exactly the pop this rewrite removes.
+ */
+function gustDelay(u: number, extra = 0): string {
+  const lag = Math.min(Math.max(u, 0), 1) * SWEEP + extra;
+  return `${(-(GUST_PERIOD - lag)).toFixed(2)}s`;
+}
+
+/** Negative delay somewhere inside a flutter cycle, so flutters start scattered. */
+function flutterDelay(rand: () => number, period: number): string {
+  return `${(-rand() * period).toFixed(2)}s`;
+}
 
 /**
  * Tiny LCG so generated foliage is stable across re-renders (no reshuffle).
@@ -150,8 +188,6 @@ function Frond({
   fill,
   shade,
   seed,
-  delay,
-  period,
 }: {
   x: number;
   y: number;
@@ -160,8 +196,6 @@ function Frond({
   fill: string;
   shade?: string;
   seed: number;
-  delay: number;
-  period: number;
 }) {
   const rand = rng(seed);
   const segs = 10;
@@ -179,27 +213,49 @@ function Frond({
       );
     }
   }
+  // Gust lean grows with length (a taller frond has more sail); the flutter
+  // is a fraction of a degree at a short period no two fronds share.
+  const amp = 1.8 + len / 90;
+  const flutter = 0.6 + rand() * 0.5;
+  const flutterPeriod = 2.4 + rand() * 1.5;
   return (
-    // Outer group holds the SVG placement transform; the inner group owns the
-    // CSS animation transform. Nesting keeps the two from overwriting each
+    // Outer group holds the SVG placement transform; the inner groups own the
+    // CSS animation transforms. Nesting keeps them from overwriting each
     // other — a CSS `transform` on an element replaces its `transform`
-    // attribute outright rather than composing with it.
+    // attribute outright rather than composing with it, and two animations
+    // on one element don't add, which is why gust and flutter are two groups.
     <g transform={`translate(${x} ${y}) rotate(${angle})`}>
-      <g className={styles.frond} style={{ animationDelay: `${delay}s`, animationDuration: `${period}s` }}>
-        {parts}
+      <g
+        className={styles.frondGust}
+        style={{ animationDelay: gustDelay(x / 1200, rand() * 0.5), ["--amp" as string]: `${amp.toFixed(2)}deg` }}
+      >
+        <g
+          className={styles.frondFlutter}
+          style={{
+            animationDelay: flutterDelay(rand, flutterPeriod),
+            animationDuration: `${flutterPeriod.toFixed(2)}s`,
+            ["--flutter" as string]: `${flutter.toFixed(2)}deg`,
+          }}
+        >
+          {parts}
+        </g>
       </g>
     </g>
   );
 }
 
-/** A hanging vine with leaf nodes, attached at the top band. */
+/**
+ * A hanging vine with leaf nodes. Rendered *inside* the near canopy layer's
+ * `<svg>`, before that layer's leaf masses, so it inherits the layer's gust
+ * transform exactly (it can't drift relative to the leaves it hangs from) and
+ * its top end is hidden under them (the join reads as "emerges from the
+ * foliage" rather than "line drawn over it").
+ */
 function Vine({
   x,
   top,
   len,
   seed,
-  delay,
-  period,
   color,
   leaf,
 }: {
@@ -207,8 +263,6 @@ function Vine({
   top: number;
   len: number;
   seed: number;
-  delay: number;
-  period: number;
   color: string;
   leaf: string;
 }) {
@@ -241,23 +295,42 @@ function Vine({
     );
   }
   const sway = 5 + rand() * 4;
-  // No wrapper transform needed: `.vine` sets `transform-box: fill-box`, so
-  // its sway origin resolves from its own bounding box wherever that box
-  // happens to sit in the band's coordinate system.
+  // Gust: the tail is pushed downwind. A clockwise rotation about the top
+  // moves a hanging tail *left*, so the amplitude is negative to lean +x.
+  // Longer vines have more sail and swing further.
+  const amp = -(2.4 + len / 120);
+  // Pendulum: a longer vine swings slower, as a real one does.
+  const pendulum = 1.3 + rand() * 0.7;
+  const pendulumPeriod = 3.4 + len / 80;
+  // No wrapper transform needed: both groups set `transform-box: fill-box`,
+  // so the swing origin resolves from the vine's own bounding box wherever
+  // that box happens to sit in the band's coordinate system.
   return (
-    <g className={styles.vine} style={{ animationDelay: `${delay}s`, animationDuration: `${period}s` }}>
-      <path
-        d={`M${x},${top} q${sway},${len * 0.34} ${-sway * 0.4},${len * 0.62} T${x - 1},${top + len}`}
-        stroke={color}
-        strokeWidth={4.5}
-        // Butt caps leave a flat perpendicular cut at the tip, which on a
-        // near-horizontal final segment reads as a stray dash — a broken
-        // stroke rather than the end of a vine.
-        strokeLinecap="round"
-        fill="none"
-        opacity={0.9}
-      />
-      {nodes}
+    <g
+      className={styles.vineGust}
+      style={{ animationDelay: gustDelay(x / 1200, rand() * 0.4), ["--amp" as string]: `${amp.toFixed(2)}deg` }}
+    >
+      <g
+        className={styles.vinePendulum}
+        style={{
+          animationDelay: flutterDelay(rand, pendulumPeriod),
+          animationDuration: `${pendulumPeriod.toFixed(2)}s`,
+          ["--flutter" as string]: `${pendulum.toFixed(2)}deg`,
+        }}
+      >
+        <path
+          d={`M${x},${top} q${sway},${len * 0.34} ${-sway * 0.4},${len * 0.62} T${x - 1},${top + len}`}
+          stroke={color}
+          strokeWidth={4.5}
+          // Butt caps leave a flat perpendicular cut at the tip, which on a
+          // near-horizontal final segment reads as a stray dash — a broken
+          // stroke rather than the end of a vine.
+          strokeLinecap="round"
+          fill="none"
+          opacity={0.9}
+        />
+        {nodes}
+      </g>
     </g>
   );
 }
@@ -411,9 +484,8 @@ function Bough({
   fill,
   shade,
   branch,
+  plane,
   seed,
-  delay,
-  period,
   opacity,
   tier,
 }: {
@@ -428,15 +500,33 @@ function Bough({
   /** Depth-appropriate too: a dark branch under a pale far clump reads as a
       stick laid across it, which is what a single fixed branch color did. */
   branch: string;
+  plane: "behind" | "front";
   seed: number;
-  delay: number;
-  period: number;
   opacity: number;
   tier: Tier;
 }) {
   const W = 190;
   const H = 130;
+  // The branch's vertical centre, as the rotation origin for the whole bough.
+  const BRANCH_Y = 57.5;
+  const rand = rng(seed);
+  // Horizontal position of the branch root as a page fraction, for phase.
+  const pct = parseFloat(offset) / 100;
+  const u = side === "left" ? pct : 1 - pct;
+  // A gust presses the bough down. Left boughs extend +x, so "down" is a
+  // clockwise (positive) rotation; right boughs are mirrored inside the SVG
+  // and extend -x, so the same dip is counter-clockwise. Near, large foliage
+  // moves most; the pale far plane barely stirs.
+  const dir = side === "left" ? 1 : -1;
+  const amp = dir * (plane === "front" ? 1.2 + scale * 0.8 : 0.5 + scale * 0.6);
+  const flutter = 0.3 + rand() * 0.3;
+  const flutterPeriod = 2.8 + rand() * 1.8;
   return (
+    // The gust animation runs on this root element (composited), rotating
+    // about the branch root. Right-side boughs are mirrored by a plain SVG
+    // `transform` attribute on the inner group rather than a CSS `scaleX(-1)`
+    // on the root, so the root's transform stays free for the animation and
+    // its origin is a simple box edge.
     <svg
       className={styles.bough}
       data-tier={tier}
@@ -447,23 +537,34 @@ function Bough({
         width: W * scale,
         height: H * scale,
         opacity,
-        transform: side === "right" ? "scaleX(-1)" : undefined,
+        transformOrigin: `${side === "left" ? "0%" : "100%"} ${((BRANCH_Y / H) * 100).toFixed(1)}%`,
+        animationDelay: gustDelay(u, rand() * 0.5),
+        ["--amp" as string]: `${amp.toFixed(2)}deg`,
       }}
       viewBox={`0 0 ${W} ${H}`}
       focusable="false"
       aria-hidden="true"
     >
-      <g className={styles.boughSway} style={{ animationDelay: `${delay}s`, animationDuration: `${period}s` }}>
-        {/* Branch runs from the anchored edge just far enough to meet the
-            clump (whose left edge is at x=50), so the bough visibly grows out
-            of the trunk it is positioned against. Kept in a wood tone rather
-            than `--forest`: at full length and full black it was the darkest
-            thing in the entire scene, and read as a stick poking out sideways
-            instead of as the branch under a mass of leaves. */}
-        <rect x={-4} y={54} width={62} height={7} fill={branch} />
-        <rect x={-4} y={61} width={62} height={2.5} fill={shade} opacity={0.22} />
-        <LeafMass cx={112} cy={58} rx={62} ry={40} rows={6} seed={seed} fill={fill} shade={shade} />
-        <LeafMass cx={68} cy={86} rx={34} ry={24} rows={5} seed={seed + 7} fill={fill} shade={shade} />
+      <g transform={side === "right" ? `matrix(-1 0 0 1 ${W} 0)` : undefined}>
+        <g
+          className={styles.boughFlutter}
+          style={{
+            animationDelay: flutterDelay(rand, flutterPeriod),
+            animationDuration: `${flutterPeriod.toFixed(2)}s`,
+            ["--flutter" as string]: `${flutter.toFixed(2)}deg`,
+          }}
+        >
+          {/* Branch runs from the anchored edge just far enough to meet the
+              clump (whose left edge is at x=50), so the bough visibly grows
+              out of the trunk it is positioned against. Kept in a wood tone
+              rather than `--forest`: at full length and full black it was the
+              darkest thing in the entire scene, and read as a stick poking
+              out sideways instead of as the branch under a mass of leaves. */}
+          <rect x={-4} y={54} width={62} height={7} fill={branch} />
+          <rect x={-4} y={61} width={62} height={2.5} fill={shade} opacity={0.22} />
+          <LeafMass cx={112} cy={58} rx={62} ry={40} rows={6} seed={seed} fill={fill} shade={shade} />
+          <LeafMass cx={68} cy={86} rx={34} ry={24} rows={5} seed={seed + 7} fill={fill} shade={shade} />
+        </g>
       </g>
     </svg>
   );
@@ -492,51 +593,70 @@ const BOUGHS: {
   plane: "behind" | "front";
   tier: Tier;
   seed: number;
-  delay: number;
-  period: number;
   opacity: number;
 }[] = [
   // ---- left, behind the trunks -------------------------------------------
-  { side: "left", offset: "4.5%", top: "88%", scale: 0.75, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "edge", seed: 101, delay: 2.4, period: 9.4, opacity: 0.85 },
-  { side: "left", offset: "9%", top: "12%", scale: 0.7, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "mid", seed: 102, delay: 1.1, period: 10.2, opacity: 0.85 },
-  { side: "left", offset: "14%", top: "44%", scale: 0.62, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "mid", seed: 103, delay: 3.3, period: 8.8, opacity: 0.8 },
-  { side: "left", offset: "19.5%", top: "26%", scale: 0.55, fill: FAR, shade: MIDBACK, branch: MIDBACK, plane: "behind", tier: "inner", seed: 104, delay: 4.2, period: 11.5, opacity: 0.9 },
-  { side: "left", offset: "24%", top: "66%", scale: 0.5, fill: FAR, shade: MIDBACK, branch: MIDBACK, plane: "behind", tier: "inner", seed: 105, delay: 0.6, period: 10.8, opacity: 0.9 },
+  { side: "left", offset: "4.5%", top: "88%", scale: 0.75, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "edge", seed: 101, opacity: 0.85 },
+  { side: "left", offset: "9%", top: "12%", scale: 0.7, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "mid", seed: 102, opacity: 0.85 },
+  { side: "left", offset: "14%", top: "44%", scale: 0.62, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "mid", seed: 103, opacity: 0.8 },
+  { side: "left", offset: "19.5%", top: "26%", scale: 0.55, fill: FAR, shade: MIDBACK, branch: MIDBACK, plane: "behind", tier: "inner", seed: 104, opacity: 0.9 },
+  { side: "left", offset: "24%", top: "66%", scale: 0.5, fill: FAR, shade: MIDBACK, branch: MIDBACK, plane: "behind", tier: "inner", seed: 105, opacity: 0.9 },
   // ---- left, in front of the trunks --------------------------------------
-  { side: "left", offset: "1%", top: "20%", scale: 1.2, fill: NEAR, shade: SHADE, branch: BRANCH, plane: "front", tier: "edge", seed: 106, delay: 0, period: 7.5, opacity: 1 },
-  { side: "left", offset: "1%", top: "74%", scale: 1.05, fill: NEAR, shade: SHADE, branch: BRANCH, plane: "front", tier: "edge", seed: 107, delay: 3.1, period: 7.9, opacity: 1 },
-  { side: "left", offset: "4.5%", top: "48%", scale: 0.9, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "edge", seed: 108, delay: 1.6, period: 8.6, opacity: 0.95 },
-  { side: "left", offset: "9%", top: "62%", scale: 0.8, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "mid", seed: 109, delay: 2.8, period: 9.1, opacity: 0.9 },
-  { side: "left", offset: "14%", top: "6%", scale: 0.7, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "mid", seed: 110, delay: 4.4, period: 8.2, opacity: 0.9 },
+  { side: "left", offset: "1%", top: "20%", scale: 1.2, fill: NEAR, shade: SHADE, branch: BRANCH, plane: "front", tier: "edge", seed: 106, opacity: 1 },
+  { side: "left", offset: "1%", top: "74%", scale: 1.05, fill: NEAR, shade: SHADE, branch: BRANCH, plane: "front", tier: "edge", seed: 107, opacity: 1 },
+  { side: "left", offset: "4.5%", top: "48%", scale: 0.9, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "edge", seed: 108, opacity: 0.95 },
+  { side: "left", offset: "9%", top: "62%", scale: 0.8, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "mid", seed: 109, opacity: 0.9 },
+  { side: "left", offset: "14%", top: "6%", scale: 0.7, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "mid", seed: 110, opacity: 0.9 },
   // ---- right, behind the trunks ------------------------------------------
-  { side: "right", offset: "4.5%", top: "84%", scale: 0.75, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "edge", seed: 111, delay: 1.9, period: 9.7, opacity: 0.85 },
-  { side: "right", offset: "9%", top: "18%", scale: 0.7, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "mid", seed: 112, delay: 3.6, period: 10.4, opacity: 0.85 },
-  { side: "right", offset: "14%", top: "52%", scale: 0.62, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "mid", seed: 113, delay: 0.9, period: 8.9, opacity: 0.8 },
-  { side: "right", offset: "19.5%", top: "32%", scale: 0.55, fill: FAR, shade: MIDBACK, branch: MIDBACK, plane: "behind", tier: "inner", seed: 114, delay: 2.6, period: 11.2, opacity: 0.9 },
-  { side: "right", offset: "24%", top: "72%", scale: 0.5, fill: FAR, shade: MIDBACK, branch: MIDBACK, plane: "behind", tier: "inner", seed: 115, delay: 4.9, period: 10.5, opacity: 0.9 },
+  { side: "right", offset: "4.5%", top: "84%", scale: 0.75, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "edge", seed: 111, opacity: 0.85 },
+  { side: "right", offset: "9%", top: "18%", scale: 0.7, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "mid", seed: 112, opacity: 0.85 },
+  { side: "right", offset: "14%", top: "52%", scale: 0.62, fill: MIDBACK, shade: MID, branch: MID, plane: "behind", tier: "mid", seed: 113, opacity: 0.8 },
+  { side: "right", offset: "19.5%", top: "32%", scale: 0.55, fill: FAR, shade: MIDBACK, branch: MIDBACK, plane: "behind", tier: "inner", seed: 114, opacity: 0.9 },
+  { side: "right", offset: "24%", top: "72%", scale: 0.5, fill: FAR, shade: MIDBACK, branch: MIDBACK, plane: "behind", tier: "inner", seed: 115, opacity: 0.9 },
   // ---- right, in front of the trunks -------------------------------------
-  { side: "right", offset: "1%", top: "14%", scale: 1.2, fill: NEAR, shade: SHADE, branch: BRANCH, plane: "front", tier: "edge", seed: 116, delay: 0.8, period: 8.1, opacity: 1 },
-  { side: "right", offset: "1%", top: "68%", scale: 1.05, fill: NEAR, shade: SHADE, branch: BRANCH, plane: "front", tier: "edge", seed: 117, delay: 1.2, period: 8.4, opacity: 1 },
-  { side: "right", offset: "4.5%", top: "40%", scale: 0.9, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "edge", seed: 118, delay: 2.2, period: 7.2, opacity: 0.95 },
-  { side: "right", offset: "9%", top: "92%", scale: 0.8, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "mid", seed: 119, delay: 3.9, period: 9.3, opacity: 0.9 },
+  { side: "right", offset: "1%", top: "14%", scale: 1.2, fill: NEAR, shade: SHADE, branch: BRANCH, plane: "front", tier: "edge", seed: 116, opacity: 1 },
+  { side: "right", offset: "1%", top: "68%", scale: 1.05, fill: NEAR, shade: SHADE, branch: BRANCH, plane: "front", tier: "edge", seed: 117, opacity: 1 },
+  { side: "right", offset: "4.5%", top: "40%", scale: 0.9, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "edge", seed: 118, opacity: 0.95 },
+  { side: "right", offset: "9%", top: "92%", scale: 0.8, fill: MID, shade: DEEP, branch: BRANCH, plane: "front", tier: "mid", seed: 119, opacity: 0.9 },
 ];
 
 /** Drifting pollen/spore motes. Placed by percentage, so they spread down any page. */
 const MOTES = Array.from({ length: 16 }, (_, i) => {
   const rand = rng(900 + i * 17);
+  const period = 9 + rand() * 9;
+  const wobblePeriod = 3 + rand() * 2.5;
   return {
     left: `${4 + rand() * 92}%`,
     top: `${5 + rand() * 90}%`,
     size: 2 + Math.round(rand() * 2),
-    delay: rand() * 12,
-    period: 9 + rand() * 9,
-    drift: `${(rand() * 2 - 1) * 26}px`,
+    // Negative: already somewhere along its rise at first paint, rather
+    // than absent for up to twelve seconds and then fading in.
+    delay: `${(-rand() * period).toFixed(2)}s`,
+    period: `${period.toFixed(2)}s`,
+    drift: `${((rand() * 2 - 1) * 26).toFixed(1)}px`,
+    wobble: `${(3 + rand() * 6).toFixed(1)}px`,
+    wobblePeriod: `${wobblePeriod.toFixed(2)}s`,
+    wobbleDelay: `${(-rand() * wobblePeriod).toFixed(2)}s`,
   };
 });
 
+/**
+ * Props shared by every canopy depth layer: one viewBox, one slice, so the
+ * layers stack in exactly the coordinate system they shared as groups.
+ */
+const CANOPY_LAYER = {
+  viewBox: "0 0 1200 340",
+  preserveAspectRatio: "xMidYMin slice",
+  focusable: "false",
+  "aria-hidden": true,
+} as const;
+
+/* The whole forest leans as one piece, so it takes a mid-page lag. */
+const LEAN_DELAY = gustDelay(0.45);
+
 export function CanopyScene() {
   return (
-    <div className={styles.scene} aria-hidden="true">
+    <div className={styles.scene} aria-hidden="true" style={{ ["--gust-period" as string]: `${GUST_PERIOD}s` }}>
       <div className={styles.sky} />
 
       {/* Sun shafts through the canopy — the strongest "inside the forest" cue. */}
@@ -546,86 +666,98 @@ export function CanopyScene() {
             the board, doesn't read as light through a canopy — it reads as
             the page being a sheet of paper. They need to cross the column,
             not align with it. */}
-        <span className={styles.shaft} style={{ left: "5%", width: 150, animationDelay: "0s", animationDuration: "13s" }} />
-        <span className={styles.shaft} style={{ left: "33%", width: 205, animationDelay: "4s", animationDuration: "17s" }} />
-        <span className={styles.shaft} style={{ left: "71%", width: 135, animationDelay: "8s", animationDuration: "15s" }} />
+        <span className={styles.shaft} style={{ left: "5%", width: 150, animationDelay: "-3s", animationDuration: "13s" }} />
+        <span className={styles.shaft} style={{ left: "33%", width: 205, animationDelay: "-11s", animationDuration: "17s" }} />
+        <span className={styles.shaft} style={{ left: "71%", width: 135, animationDelay: "-6.5s", animationDuration: "15s" }} />
       </div>
 
-      {/* Far foliage sits BEHIND the trunks so the trunks cut across it. */}
-      <div className={styles.boughs}>
-        {BOUGHS.filter((b) => b.plane === "behind").map((b) => (
-          <Bough key={`${b.side}-${b.offset}-${b.top}`} {...b} />
-        ))}
-      </div>
+      {/* Everything that is part of a tree — both bough planes, the trunks
+          and the canopy band — shares one full-page container that carries
+          the whole-forest lean. One container rather than one per block: the
+          blocks are stacked siblings in a fixed z-order anyway, and a single
+          leaning layer is one composite per frame instead of four. */}
+      <div className={styles.lean} style={{ animationDelay: LEAN_DELAY }}>
+        {/* Far foliage sits BEHIND the trunks so the trunks cut across it. */}
+        <div className={styles.boughs}>
+          {BOUGHS.filter((b) => b.plane === "behind").map((b) => (
+            <Bough key={`${b.side}-${b.offset}-${b.top}`} {...b} />
+          ))}
+        </div>
 
-      {/* Trunks: vertical, so they span any page height with no tiling. */}
-      <div className={styles.trunks}>
-        {TRUNKS.map((t) => (
-          <Trunk key={t.left} {...t} />
-        ))}
-      </div>
+        {/* Trunks: vertical, so they span any page height with no tiling. */}
+        <div className={styles.trunks}>
+          {TRUNKS.map((t) => (
+            <Trunk key={t.left} {...t} />
+          ))}
+        </div>
 
-      {/* Top canopy band — the ceiling of the forest, densest at the margins. */}
-      <svg
-        className={styles.canopyBand}
-        viewBox="0 0 1200 340"
-        preserveAspectRatio="xMidYMin slice"
-        focusable="false"
-        aria-hidden="true"
-      >
-        {/* Far layer: pale, barely moving, reads as distance. */}
-        <g className={styles.canopySlow} style={{ animationDelay: "0s", animationDuration: "11s" }}>
-          <LeafMass cx={90} cy={40} rx={150} ry={72} rows={7} seed={1} fill={FAR} />
-          <LeafMass cx={380} cy={0} rx={170} ry={62} rows={6} seed={2} fill={FAR} />
-          <LeafMass cx={700} cy={4} rx={160} ry={60} rows={6} seed={3} fill={FAR} />
-          <LeafMass cx={1050} cy={38} rx={175} ry={74} rows={7} seed={4} fill={FAR} />
-        </g>
+        {/* Top canopy band — the ceiling of the forest, densest at the margins.
+            One `<svg>` per depth, stacked in the same coordinate system, so
+            each depth's sway runs on its own root element. */}
+        <div className={styles.canopyBand}>
+          {/* Far layer: pale, barely moving, reads as distance. */}
+          <svg className={`${styles.canopyLayer} ${styles.canopyFar}`} style={{ animationDelay: gustDelay(0.5, 0.9) }} {...CANOPY_LAYER}>
+            <LeafMass cx={90} cy={40} rx={150} ry={72} rows={7} seed={1} fill={FAR} />
+            <LeafMass cx={380} cy={0} rx={170} ry={62} rows={6} seed={2} fill={FAR} />
+            <LeafMass cx={700} cy={4} rx={160} ry={60} rows={6} seed={3} fill={FAR} />
+            <LeafMass cx={1050} cy={38} rx={175} ry={74} rows={7} seed={4} fill={FAR} />
+          </svg>
 
-        {/* Mid layer. */}
-        <g className={styles.canopyMid} style={{ animationDelay: "1.5s", animationDuration: "9s" }}>
-          <LeafMass cx={40} cy={70} rx={150} ry={86} rows={8} seed={5} fill={MIDBACK} />
-          <LeafMass cx={300} cy={6} rx={130} ry={58} rows={6} seed={6} fill={MIDBACK} />
-          <LeafMass cx={880} cy={8} rx={140} ry={60} rows={6} seed={7} fill={MIDBACK} />
-          <LeafMass cx={1170} cy={72} rx={155} ry={88} rows={8} seed={8} fill={MIDBACK} />
-        </g>
+          {/* Mid layer. */}
+          <svg className={`${styles.canopyLayer} ${styles.canopyMid}`} style={{ animationDelay: gustDelay(0.5, 0.4) }} {...CANOPY_LAYER}>
+            <LeafMass cx={40} cy={70} rx={150} ry={86} rows={8} seed={5} fill={MIDBACK} />
+            <LeafMass cx={300} cy={6} rx={130} ry={58} rows={6} seed={6} fill={MIDBACK} />
+            <LeafMass cx={880} cy={8} rx={140} ry={60} rows={6} seed={7} fill={MIDBACK} />
+            <LeafMass cx={1170} cy={72} rx={155} ry={88} rows={8} seed={8} fill={MIDBACK} />
+          </svg>
 
-        {/* Near layer: full-strength green with shading, hung at the corners so
-            the center of the band stays light over the board. */}
-        <g className={styles.canopyNear} style={{ animationDelay: "0.6s", animationDuration: "7.5s" }}>
-          <LeafMass cx={10} cy={78} rx={165} ry={104} rows={8} seed={9} fill={NEAR} shade={SHADE} />
-          <LeafMass cx={110} cy={104} rx={92} ry={86} rows={8} seed={15} fill={DEEP} shade={SHADE} />
-          <LeafMass cx={175} cy={30} rx={105} ry={66} rows={7} seed={10} fill={NEAR} shade={SHADE} />
-          <LeafMass cx={262} cy={52} rx={78} ry={58} rows={6} seed={16} fill={NEAR} shade={SHADE} />
-          <LeafMass cx={358} cy={20} rx={70} ry={44} rows={5} seed={17} fill={MID} shade={DEEP} />
           {/* These two sit directly behind the centred nav links. They were
               `MID` and measured 2.05:1 / 2.87:1 against `--moss` nav text —
               a straight §8 contrast failure at every width. Kept pale and
               raised so the nav always lands on light foliage; anything dark
-              added to this x-range has to be re-measured against the nav. */}
-          <LeafMass cx={520} cy={-34} rx={130} ry={54} rows={5} seed={11} fill={MIDBACK} />
-          <LeafMass cx={820} cy={-32} rx={125} ry={52} rows={5} seed={12} fill={MIDBACK} />
-          <LeafMass cx={848} cy={22} rx={72} ry={46} rows={5} seed={18} fill={MID} shade={DEEP} />
-          <LeafMass cx={946} cy={54} rx={80} ry={60} rows={6} seed={19} fill={NEAR} shade={SHADE} />
-          <LeafMass cx={1035} cy={30} rx={110} ry={68} rows={7} seed={13} fill={NEAR} shade={SHADE} />
-          <LeafMass cx={1104} cy={102} rx={94} ry={84} rows={8} seed={20} fill={DEEP} shade={SHADE} />
-          <LeafMass cx={1195} cy={80} rx={170} ry={106} rows={8} seed={14} fill={NEAR} shade={SHADE} />
-        </g>
+              added to this x-range has to be re-measured against the nav.
+              Their own layer so they keep drawing over the mid masses under
+              them while the near corners (below) draw over everything. */}
+          <svg className={`${styles.canopyLayer} ${styles.canopyNearCenter}`} style={{ animationDelay: gustDelay(0.5) }} {...CANOPY_LAYER}>
+            <LeafMass cx={520} cy={-34} rx={130} ry={54} rows={5} seed={11} fill={MIDBACK} />
+            <LeafMass cx={820} cy={-32} rx={125} ry={52} rows={5} seed={12} fill={MIDBACK} />
+          </svg>
 
-        {/* Vines hanging out of the canopy into the page. */}
-        <Vine x={128} top={120} len={210} seed={21} delay={0} period={9} color={DEEP} leaf={NEAR} />
-        <Vine x={247} top={78} len={150} seed={22} delay={2.3} period={11} color={DEEP} leaf={MID} />
-        <Vine x={962} top={70} len={168} seed={23} delay={1.1} period={10} color={DEEP} leaf={MID} />
-        <Vine x={1088} top={116} len={225} seed={24} delay={3.4} period={8.5} color={DEEP} leaf={NEAR} />
-      </svg>
+          {/* Near layer: full-strength green with shading, hung at the corners
+              so the center of the band stays light over the board. Split left
+              and right so the gust reaches the right corner after the left.
+              The vines are drawn first, so their tops sit under the leaves. */}
+          <svg className={`${styles.canopyLayer} ${styles.canopyNear}`} style={{ animationDelay: gustDelay(0.12) }} {...CANOPY_LAYER}>
+            <Vine x={128} top={120} len={210} seed={21} color={DEEP} leaf={NEAR} />
+            <Vine x={247} top={78} len={150} seed={22} color={DEEP} leaf={MID} />
+            <LeafMass cx={10} cy={78} rx={165} ry={104} rows={8} seed={9} fill={NEAR} shade={SHADE} />
+            <LeafMass cx={110} cy={104} rx={92} ry={86} rows={8} seed={15} fill={DEEP} shade={SHADE} />
+            <LeafMass cx={175} cy={30} rx={105} ry={66} rows={7} seed={10} fill={NEAR} shade={SHADE} />
+            <LeafMass cx={262} cy={52} rx={78} ry={58} rows={6} seed={16} fill={NEAR} shade={SHADE} />
+            <LeafMass cx={358} cy={20} rx={70} ry={44} rows={5} seed={17} fill={MID} shade={DEEP} />
+          </svg>
+          <svg className={`${styles.canopyLayer} ${styles.canopyNear}`} style={{ animationDelay: gustDelay(0.88) }} {...CANOPY_LAYER}>
+            <Vine x={962} top={70} len={168} seed={23} color={DEEP} leaf={MID} />
+            <Vine x={1088} top={116} len={225} seed={24} color={DEEP} leaf={NEAR} />
+            <LeafMass cx={848} cy={22} rx={72} ry={46} rows={5} seed={18} fill={MID} shade={DEEP} />
+            <LeafMass cx={946} cy={54} rx={80} ry={60} rows={6} seed={19} fill={NEAR} shade={SHADE} />
+            <LeafMass cx={1035} cy={30} rx={110} ry={68} rows={7} seed={13} fill={NEAR} shade={SHADE} />
+            <LeafMass cx={1104} cy={102} rx={94} ry={84} rows={8} seed={20} fill={DEEP} shade={SHADE} />
+            <LeafMass cx={1195} cy={80} rx={170} ry={106} rows={8} seed={14} fill={NEAR} shade={SHADE} />
+          </svg>
+        </div>
 
-      {/* Near foliage sits IN FRONT of the trunks, hiding parts of them. */}
-      <div className={styles.boughs}>
-        {BOUGHS.filter((b) => b.plane === "front").map((b) => (
-          <Bough key={`${b.side}-${b.offset}-${b.top}`} {...b} />
-        ))}
+        {/* Near foliage sits IN FRONT of the trunks, hiding parts of them. */}
+        <div className={styles.boughs}>
+          {BOUGHS.filter((b) => b.plane === "front").map((b) => (
+            <Bough key={`${b.side}-${b.offset}-${b.top}`} {...b} />
+          ))}
+        </div>
       </div>
 
-      {/* Understory: fronds pushing up from the forest floor. */}
+      {/* Understory: fronds pushing up from the forest floor. Anchored to the
+          bottom edge, where the whole-forest lean is zero, so it sits outside
+          the leaning container. */}
       <svg
         className={styles.understory}
         viewBox="0 0 1200 230"
@@ -641,10 +773,10 @@ export function CanopyScene() {
             next to the solid foreground fronds read as elements that failed
             to render rather than as distance. */}
         <g opacity={0.85}>
-          <Frond x={150} y={232} len={120} angle={-14} fill={MID} shade={SHADE} seed={31} delay={0} period={9} />
-          <Frond x={430} y={232} len={62} angle={9} fill={MIDBACK} shade={MID} seed={32} delay={2.1} period={10.5} />
-          <Frond x={780} y={232} len={66} angle={-7} fill={MIDBACK} shade={MID} seed={33} delay={1.4} period={9.8} />
-          <Frond x={1050} y={232} len={126} angle={12} fill={MID} shade={SHADE} seed={34} delay={3.2} period={8.8} />
+          <Frond x={150} y={232} len={120} angle={-14} fill={MID} shade={SHADE} seed={31} />
+          <Frond x={430} y={232} len={62} angle={9} fill={MIDBACK} shade={MID} seed={32} />
+          <Frond x={780} y={232} len={66} angle={-7} fill={MIDBACK} shade={MID} seed={33} />
+          <Frond x={1050} y={232} len={126} angle={12} fill={MID} shade={SHADE} seed={34} />
         </g>
         {/* Foreground understory. Overlapping deliberately — the fronds cross
             each other and the mid group behind them, which is what a thicket
@@ -654,20 +786,20 @@ export function CanopyScene() {
             near plane that runs off the edge is the strongest available cue
             that the viewer is standing inside the scene rather than looking
             at it from outside. */}
-        <Frond x={-10} y={240} len={210} angle={-24} fill={DEEP} shade={SHADE} seed={42} delay={1.5} period={9.4} />
-        <Frond x={40} y={236} len={186} angle={-19} fill={NEAR} shade={SHADE} seed={35} delay={0.4} period={8.2} />
-        <Frond x={78} y={240} len={140} angle={-32} fill={DEEP} shade={SHADE} seed={43} delay={3.4} period={10.1} />
-        <Frond x={112} y={238} len={150} angle={6} fill={DEEP} shade={SHADE} seed={36} delay={2.7} period={9.6} />
-        <Frond x={176} y={238} len={166} angle={-9} fill={NEAR} shade={SHADE} seed={44} delay={0.7} period={8.9} />
-        <Frond x={236} y={238} len={128} angle={22} fill={NEAR} shade={SHADE} seed={37} delay={1.8} period={10.2} />
-        <Frond x={296} y={240} len={104} angle={14} fill={MID} shade={DEEP} seed={45} delay={4.1} period={9.0} />
-        <Frond x={906} y={240} len={110} angle={-13} fill={MID} shade={DEEP} seed={46} delay={2.3} period={9.5} />
-        <Frond x={968} y={238} len={132} angle={-21} fill={NEAR} shade={SHADE} seed={39} delay={1.1} period={9.2} />
-        <Frond x={1030} y={238} len={172} angle={9} fill={NEAR} shade={SHADE} seed={47} delay={3.7} period={8.4} />
-        <Frond x={1092} y={238} len={158} angle={-4} fill={DEEP} shade={SHADE} seed={40} delay={3.0} period={8.6} />
-        <Frond x={1136} y={240} len={144} angle={30} fill={DEEP} shade={SHADE} seed={48} delay={1.0} period={10.3} />
-        <Frond x={1164} y={236} len={180} angle={17} fill={NEAR} shade={SHADE} seed={41} delay={0.9} period={9.9} />
-        <Frond x={1214} y={240} len={205} angle={25} fill={DEEP} shade={SHADE} seed={49} delay={2.6} period={9.1} />
+        <Frond x={-10} y={240} len={210} angle={-24} fill={DEEP} shade={SHADE} seed={42} />
+        <Frond x={40} y={236} len={186} angle={-19} fill={NEAR} shade={SHADE} seed={35} />
+        <Frond x={78} y={240} len={140} angle={-32} fill={DEEP} shade={SHADE} seed={43} />
+        <Frond x={112} y={238} len={150} angle={6} fill={DEEP} shade={SHADE} seed={36} />
+        <Frond x={176} y={238} len={166} angle={-9} fill={NEAR} shade={SHADE} seed={44} />
+        <Frond x={236} y={238} len={128} angle={22} fill={NEAR} shade={SHADE} seed={37} />
+        <Frond x={296} y={240} len={104} angle={14} fill={MID} shade={DEEP} seed={45} />
+        <Frond x={906} y={240} len={110} angle={-13} fill={MID} shade={DEEP} seed={46} />
+        <Frond x={968} y={238} len={132} angle={-21} fill={NEAR} shade={SHADE} seed={39} />
+        <Frond x={1030} y={238} len={172} angle={9} fill={NEAR} shade={SHADE} seed={47} />
+        <Frond x={1092} y={238} len={158} angle={-4} fill={DEEP} shade={SHADE} seed={40} />
+        <Frond x={1136} y={240} len={144} angle={30} fill={DEEP} shade={SHADE} seed={48} />
+        <Frond x={1164} y={236} len={180} angle={17} fill={NEAR} shade={SHADE} seed={41} />
+        <Frond x={1214} y={240} len={205} angle={25} fill={DEEP} shade={SHADE} seed={49} />
       </svg>
 
       {/* Pollen drifting in the shafts. */}
@@ -681,9 +813,12 @@ export function CanopyScene() {
               top: m.top,
               width: m.size,
               height: m.size,
-              animationDelay: `${m.delay}s`,
-              animationDuration: `${m.period}s`,
+              animationDelay: m.delay,
+              animationDuration: m.period,
               ["--drift" as string]: m.drift,
+              ["--wobble" as string]: m.wobble,
+              ["--wobble-period" as string]: m.wobblePeriod,
+              ["--wobble-delay" as string]: m.wobbleDelay,
             }}
           />
         ))}
