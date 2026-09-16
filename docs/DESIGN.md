@@ -2,8 +2,10 @@
 
 > A daily deduction game. Rank six apes in a gorilla troop from silverback to omega in six guesses.
 
-Status: draft v0.13 · Owner: Oz · Last updated: 2026-09-16
+Status: draft v0.14 · Owner: Oz · Last updated: 2026-09-16
 
+> **v0.14 changelog:** the launch pass — everything here is about Silbak being a public URL rather than a private prototype, and none of it touches generation, feedback or the clue pool. (1) **The share line now ends with the site URL**, reversing §5's "line 1 is the only text" rule; a result pasted into a group chat with no way to reach the game is a dead end, and that paste is how a daily game grows. Spoiler-safety is untouched — still no names, traits or arrangement. (2) **The board is playable on a phone.** Rungs were 82–95px and ragged because a 12ch rank column wrapped the trait line three and four ways; the word badge becomes a numeral below 480px, the portrait steps to its 44px floor, and rungs are a uniform 62px, so the ladder and Submit fit one viewport together. Previously Submit sat at y=1052 on a 664px screen. See §7. (3) **`EPOCH` moved back fourteen days** — puzzles are keyed by `dateKey`, not `number`, so every date still yields exactly the puzzle it always did; what changed is that launch day is #15 with a stocked archive behind it, and that players west of UTC no longer see "Troop #0" (local `todayKey()` against a UTC epoch). (4) **The field station is fictional.** The eyebrow read "Karisoke observation log"; Karisoke is the Dian Fossey Gorilla Fund's real research centre, and on a public domain that reads as a claim of affiliation. It is "Mikeno" now — a Virunga peak, the same register as the ape names. (5) Latin-only font subsets (591KB → 186KB), a rendered OG/Twitter card at `public/og.png`, corrected `theme-color` and page description, and the footer byline links out instead of printing an email for harvesters. See §5, §6, §7.
+>
 > **v0.13 changelog:** the SILBAK wordmark's construction — hard unblurred offsets, warm on one side and cool on the other, an ink stroke on the accent half — became a system the whole board is built from, instead of a one-off on the title. Field notes, the rungs, the verdict strip, the ledger and the attempt history are now inked and extruded blocks; the ape names and the panel nameplates carry the lettering's split. Nothing about play changed. Two contrast defects on the attempt history were fixed in passing: the guess number was `--mist` (a dark-panel token) sitting on the `--paper` page ground, and the count badge was hardcoded `#000` on `--bark` in both branches, which silently contradicted the rule its own comment states — it is `--banana` for a non-zero count and `--mist` for a zero, as documented. See §6, "Relief".
 >
 > **v0.12 changelog:** the share grid went from a count bar to a positional map — each row now shows banana/rock at the rung it actually landed on (`gradeMask` in `grade.ts`), not `exact` bananas left-packed. This is a deliberate reversal of the v0.11 "row is only a count" rule, made with the leak it reopens fully priced in: because everyone solves the same daily puzzle and the trait-obvious first guess is right often enough to be the taught opening move (`NOISE`, §4), a positional row can hand a friend who hasn't played yet the exact placement of every rung their own first guess would also land on — not a vague hint, real solution content, for free. Accepted anyway because a per-guess reveal only pays off for a viewer who then guesses that exact row's arrangement, and because the grid feeling like a fingerprint of *your* guesses (the thing Wordle's grid has and a left-packed bar doesn't) was judged worth that bounded, guess-1-concentrated risk. In-game feedback is unchanged — still `grade()`'s bare count, never a map; only the already-finished share artifact went positional. See §5.
@@ -237,6 +239,7 @@ Silbak #219  4/6 · par 3
 🍌🍌🪨🍌🪨🪨
 🍌🍌🍌🍌🪨🍌
 🍌🍌🍌🍌🍌🍌
+https://silbak.io
 ```
 
 Each row is a positional map of that guess (`gradeMask` in `grade.ts`): banana at the rung the guess had right, rock elsewhere — not a left-packed bar of the count. A solve in one reads `1/6 · par 2 🥇`.
@@ -246,8 +249,9 @@ Rules, non-negotiable:
 - **Banana and rock only.** This was originally framed as hiding directional arrows; then as hiding which rungs were right entirely (v0.11's count-only row). As of v0.12 the row is positional again, by deliberate choice — see the v0.12 changelog above for the leak this reopens and why it was accepted. No ape names or arrangement is ever printed alongside it, so a viewer can only act on a row by independently guessing that exact arrangement.
 - No ape names, no traits, no clue text.
 - Loss renders `X/6` and shows all six rows.
-- Line 1 is the only text. Puzzle number, not date — dates cause timezone arguments.
-- Optional trailing streak line (`🔥 12`) once streaks exist. Off by default.
+- Puzzle number, not date — dates cause timezone arguments.
+- **One trailing line, and it is the URL** (v0.14). Through v0.13 the rule here was "line 1 is the only text", which kept the artifact clean and made it useless: the grid is unmistakable to someone who already plays and meaningless to everyone else, so a result pasted into a group chat had no door on it. The URL goes last, on its own line, leaving the emoji block intact above it — which is also what most chat clients preview. It lives in `apps/web/src/lib/share.ts` (`SITE_URL`), *not* in the engine's `shareGrid`: the engine is deployment-agnostic by design, and where the game happens to be hosted is exactly the kind of knowledge that would end that. The engine owns the score and the grid; the web app owns the front door.
+- Nothing else. Streak lines, taglines and hashtags stay out; the grid plus one link is the whole artifact.
 
 ### Par (v0.11)
 
@@ -549,6 +553,20 @@ As of v0.4, the canopy scene (previous section) adds a second, deliberately sepa
 Each attempts row shows the full submitted arrangement and its count: one cell per rung, a four-letter name clipped from the ape's full name, then a `n/6` badge (`--banana` when n > 0, since a count of correct rungs is exactly what that token means). With count-only feedback the history is the primary deduction surface — the fact "guess 3 moved only Kanzi and dropped from 3 to 2" lives in two rows — so it can't be glyph-only chips. The ledger (§2) sits between the controls and the history. The submit button (and the keyboard path in the store) refuses to resubmit an arrangement identical to the last graded one, since that guess teaches nothing new. A visually-hidden `aria-live` region announces each guess's count.
 
 Result state replaces the submit block with headline, the par line ("Two over par · par 3", or 🥇 for a clean read), the banana/rock grid, a stats strip (played, win %, streak, best, vs par this month — daily only), and the copy button. The archive (`/archive/:number`) reuses the identical board with a date header, no streak effect, and no stats.
+
+### Narrow viewports (v0.14)
+
+**The rule: the ladder and Submit must fit one screen together.** Not the whole page — the header and field notes may scroll away, and on a phone they do. But a player comparing six apes and committing to an order cannot be made to scroll between the six things and the button, and before v0.14 they were: at 390×664 the first rung sat at y=471 and Submit at y=1052, with rungs varying 82–95px.
+
+What buys it, below 480px, in order of how much each gives back:
+
+1. **The rank column, 12ch → 2.5ch.** "SILVERBACK" is a 12ch word costing 25% of a 390px viewport to say something the rules line and the ledger footer both already say. `Rung.tsx` renders two badges — the word and the numeral — and the stylesheet shows one. Both are `aria-hidden`; the rung's `aria-label` carries "Rung 1, silverback" at every width, so the narrow layout costs a screen-reader user nothing. The width this frees is what lets the trait line sit on one row, which is what makes rung heights uniform.
+2. **The portrait, 56px → 44px** — §6's stated floor, and the size `/dev/apes` renders for exactly this check.
+3. **Vertical padding and the header.** Rungs go to `--space-2`; the wordmark drops to 2rem and the rules paragraph to its two essential sentences, with the trait caveat held back to wide viewports.
+
+Together a rung goes 82px → 62px and ladder-plus-Submit comes to 490px.
+
+Trait text **wraps, never truncates** — every one of those words is a clue, so an ellipsis would silently delete information the puzzle depends on. The separators are elements rather than literal `" · "` text so their width is a style: 0.4em a side normally, 0.22em narrow, which is what keeps the longest string in the game ("subadult · slight · no silver · scarred") on one line at 375px.
 
 ---
 

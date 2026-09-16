@@ -39,6 +39,8 @@ There is no dev server managed outside the Browser-pane tooling — `.claude/lau
 
 **The favicon is the portrait, not a copy of it:** `apps/web/public/favicon.svg` is one rung cropped to its `--rock` disc, with every path lifted verbatim from `ApeGlyph.tsx` in that file's 100x100 glyph space. Nothing enforces the correspondence, so re-crop it deliberately when the portrait geometry moves — see `docs/DESIGN.md` §6, "The mark". The committed PNG fallbacks are rasterised from it by `pnpm --filter @silbak/web icons` (Playwright, already a root devDependency); re-run that after editing the SVG.
 
+That same command also renders `apps/web/public/og.png`, the 1200x630 link-preview card, via `scripts/render-og.mjs` — built from the real wordmark, the `tokens.css` palette (inlined as literals, since the page can't see the stylesheet) and `favicon.svg` itself, with the shipped font files embedded as data URIs so it can't silently rasterise in a fallback face. Re-run it after touching tokens, the favicon, or the wordmark treatment. The absolute URLs in `apps/web/index.html` (`og:url`, `og:image`, `canonical`) and `SITE_URL` in `apps/web/src/lib/share.ts` are the two places the domain is written down; they have to move together.
+
 **Checking the ape portraits:** `/dev/apes` (mounted only under `import.meta.env.DEV`, route in `App.tsx`, page in `src/routes/DevApes.tsx`) renders every valid trait combination at 56px and 46px on the rung's `--rock` disc. It is the only test `ApeGlyph.tsx` has — eyeball the whole matrix after touching its trait tables or geometry.
 
 ## Architecture
